@@ -37,7 +37,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: gdscript-lsp/go.mod
-          cache: false
+          cache-dependency-path: gdscript-lsp/go.mod
       - name: Build proxy
         run: go build -o /tmp/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
       - name: Verify proxy version command
