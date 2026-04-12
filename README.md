@@ -12,7 +12,7 @@ For coding-agent instructions and implementation guidance, see `AGENTS.md`.
 |-----------|------------|
 | [`godot-plugin/`](godot-plugin/README.md) | Godot 4.x editor plugin exposing a WebSocket command server on `localhost:6505` |
 | [`gdscript-lsp/`](gdscript-lsp/README.md) | Shared GDScript LSP bridge plus tool-specific integrations |
-| [`cli/`](cli/README.md) | Planned `godot-bridge` CLI (Go) |
+| [`cli/`](cli/README.md) | `godot-bridge` CLI (Go) for editor control through the plugin |
 
 ## Quick start
 
@@ -49,7 +49,17 @@ Run `opencode` from the repo root. `opencode.json` configures:
 
 ### 4. Send editor commands
 
-With Godot open and the plugin enabled, send JSON commands to `ws://localhost:6505`:
+Use the CLI with Godot open and the plugin enabled:
+
+```bash
+cd cli && go run ./cmd/godot-bridge status
+cd cli && go run ./cmd/godot-bridge editor state
+cd cli && go run ./cmd/godot-bridge node add Sprite2D --parent /root/Main --name Hero --props '{"position":[200,150]}'
+```
+
+The CLI is a thin wrapper over the plugin protocol. The currently supported plugin-backed commands are documented in `cli/README.md`.
+
+You can also send JSON directly to `ws://localhost:6505`:
 
 ```json
 {"id": "1", "command": "editor_state", "args": {}}
