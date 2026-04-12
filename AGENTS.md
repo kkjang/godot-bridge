@@ -42,7 +42,7 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
 
 - `godot-plugin/`: implemented and supports scene, node, script, resource, screenshot, and run/stop editor commands.
 - `gdscript-lsp/`: implemented and wired for Claude Code and OpenCode.
-- `cli/`: planned, but not yet implemented.
+- `cli/`: implemented and buildable as the `godot-bridge` Go CLI.
 - Remaining notable gap: pushed error/debug events from the running game/editor back to the agent.
 
 ## Repository layout
@@ -51,6 +51,18 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
 |-----------|-----------|
 | `godot-plugin/` | Godot 4.x editor plugin - WebSocket command server on `localhost:6505` |
 | `gdscript-lsp/` | Shared GDScript LSP bridge plus tool-specific integrations |
-| `cli/` | `godot-bridge` CLI (Go) - not yet implemented |
+| `cli/` | `godot-bridge` CLI (Go) for plugin-backed editor control |
+
+## Releases
+
+- `cli/` and `gdscript-lsp/` are versioned independently through `releases.yaml`.
+- Use a small release PR to bump versions intentionally. Do not infer or bump release versions casually.
+- Release versions must be semver strings like `v0.1.0`.
+- The requested versions map to module tags:
+  - `cli: vX.Y.Z` -> `cli/vX.Y.Z`
+  - `gdscript-lsp: vX.Y.Z` -> `gdscript-lsp/vX.Y.Z`
+- Releases are created only from the default branch after the `CI` workflow succeeds.
+- The release workflow creates notes-only GitHub Releases with GitHub-generated changelog notes.
+- Generated notes are currently repo-wide, so they may include unrelated changes outside the released module.
 
 Keep project-wide guidance here and implementation-specific guidance in the nearest subdirectory `AGENTS.md`.

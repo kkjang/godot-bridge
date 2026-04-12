@@ -4,9 +4,21 @@ The `godot-bridge` CLI is the human- and agent-friendly shell interface for cont
 
 For implementation guidance while building the CLI, see `AGENTS.md`.
 
+## Install
+
+Install the CLI onto `PATH` from any repository:
+
+```bash
+go install github.com/kkjang/godot-bridge/cli/cmd/godot-bridge@latest
+godot-bridge version
+```
+
+For a pinned release, replace `@latest` with `@vX.Y.Z` after CLI release tags exist.
+
 ## User-facing commands
 
 ```text
+godot-bridge version
 godot-bridge status
 godot-bridge spec [--markdown]
 godot-bridge editor state
@@ -64,6 +76,7 @@ The built-in `godot-bridge spec` command is the machine-readable source of truth
 
 | CLI command | Plugin command | Required args | Optional args | Defaults | Description |
 |---|---|---|---|---|---|
+| `godot-bridge version` | - | none | none | `text output` | Prints the CLI version. Release builds replace the default dev value. |
 | `godot-bridge status` | `editor_state` | none | `--json` | `text output` | Checks that the bridge plugin is reachable and responsive. |
 | `godot-bridge spec [--markdown]` | - | none | `--markdown` | `json output` | Prints the machine-readable CLI spec. Use --markdown to render the README command table from the same source. |
 | `godot-bridge editor state` | `editor_state` | none | `--json` | `text output` | Shows current scene, open scenes, selected nodes, and active editor screen. |

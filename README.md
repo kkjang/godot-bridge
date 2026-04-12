@@ -1,10 +1,92 @@
 # godot-bridge
 
-AI-assisted Godot development with shared integrations for Claude Code, OpenCode, and similar tools.
+AI-assisted Godot development with a small local toolchain:
 
-This repository provides the bridge components and tool integrations. The live Godot project can be a different workspace currently open in the editor.
+- `gdscript-lsp-proxy` for GDScript LSP transport
+- `godot-bridge` CLI for editor control through the Godot plugin
+- a Godot editor plugin for scene and editor actions
 
-For coding-agent instructions and implementation guidance, see `AGENTS.md`.
+This repository is meant to be used from actual game project repositories. The Godot editor can have a different project open than this repository checkout.
+
+For coding-agent implementation guidance inside this repo, see `AGENTS.md`.
+
+## Bootstrap from a game project
+
+These are the four setup steps an agent or user should follow when enabling Godot Bridge in a real game repository.
+
+### 1. Install `gdscript-lsp-proxy`
+
+Install the proxy onto `PATH`:
+
+```bash
+go install github.com/kkjang/godot-bridge/gdscript-lsp/cmd/gdscript-lsp-proxy@latest
+gdscript-lsp-proxy --version
+```
+
+Notes:
+
+- The proxy is an LSP stdio subprocess, not a background daemon.
+- Your agent harness should launch it when `.gd` LSP support is needed.
+- Godot must be running with the target game project open and its GDScript LSP exposed on port `6005` unless you override `GODOT_LSP_PORT`.
+
+### 2. Install `godot-bridge`
+
+Install the CLI onto `PATH`:
+
+```bash
+go install github.com/kkjang/godot-bridge/cli/cmd/godot-bridge@latest
+godot-bridge version
+```
+
+The CLI talks to the Godot Bridge editor plugin over WebSocket on `127.0.0.1:6505` by default.
+
+### 3. Install GDScript LSP config for your agent harness
+
+Start with the included Claude and OpenCode integrations.
+
+**Claude Code**
+
+Install the plugin from this repository checkout:
+
+```bash
+claude plugin install ./gdscript-lsp/integrations/claude
+```
+
+The Claude plugin now invokes `gdscript-lsp-proxy` from `PATH`.
+
+**OpenCode**
+
+Copy or merge `gdscript-lsp/integrations/opencode/opencode.json` into the root OpenCode config for your game project.
+
+The repo-root `opencode.json` is also usable directly when working in this repository.
+
+### 4. Copy the Godot plugin into the game project
+
+Copy `godot-plugin/addons/godot_bridge/` into the target game's `addons/` directory, then enable it in **Project -> Project Settings -> Plugins**.
+
+Example:
+
+```bash
+mkdir -p /path/to/game-project/addons
+cp -R godot-plugin/addons/godot_bridge /path/to/game-project/addons/
+```
+
+After enabling the plugin, verify the bottom panel shows one of:
+
+- `Bridge: Listening :6505`
+- `Bridge: Connected`
+- `Bridge: Error (port 6505)`
+
+## Verify the setup
+
+With Godot open on the game project and the plugin enabled:
+
+```bash
+godot-bridge status
+godot-bridge editor state
+```
+
+If the plugin is reachable, `godot-bridge status` prints `connected`.
 
 ## Components
 
@@ -14,60 +96,38 @@ For coding-agent instructions and implementation guidance, see `AGENTS.md`.
 | [`gdscript-lsp/`](gdscript-lsp/README.md) | Shared GDScript LSP bridge plus tool-specific integrations |
 | [`cli/`](cli/README.md) | `godot-bridge` CLI (Go) for editor control through the plugin |
 
-## Quick start
+## Release model
 
-### 1. Install the Godot plugin
+`cli/` and `gdscript-lsp/` are separate Go modules and should be versioned independently.
 
-Copy `godot-plugin/addons/godot_bridge/` into your target project's `addons/` folder, then enable it in **Project -> Project Settings -> Plugins**.
+- CLI tags should use `cli/vX.Y.Z`
+- Proxy tags should use `gdscript-lsp/vX.Y.Z`
+- `go install ...@latest` works for bootstrap
+- Pin `@vX.Y.Z` when you want a specific released version
 
-### 2. Build the shared GDScript LSP bridge
+## Release process
 
-```bash
-cd gdscript-lsp && go build -o bin/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
-```
+Releases are driven by `releases.yaml` on the default branch.
 
-### 3. Connect your coding tool
+1. Open a small release PR.
+2. Bump one or both versions in `releases.yaml`.
+3. Merge only after the `CI` workflow passes.
+4. After merge, the `Release` workflow runs only for successful `CI` runs on the default branch.
+5. If a requested release does not already exist, the workflow creates:
+   - a git tag for the module version
+   - a GitHub Release with generated release notes
 
-**Claude Code**
+Examples:
 
-```bash
-claude --plugin-dir ./gdscript-lsp/integrations/claude
-```
+- `cli: v0.2.0` produces tag `cli/v0.2.0`
+- `gdscript-lsp: v0.1.1` produces tag `gdscript-lsp/v0.1.1`
 
-Or install it permanently:
+GitHub-generated release notes are used for now. They are repo-wide notes, not path-scoped notes.
 
-```bash
-claude plugin install ./gdscript-lsp/integrations/claude
-```
+Recommended repository settings:
 
-**OpenCode**
-
-Run `opencode` from the repo root. `opencode.json` configures:
-
-- `gopls` for `.go`
-- `gdscript-lsp-proxy` for `.gd`
-
-### 4. Send editor commands
-
-Use the CLI with Godot open and the plugin enabled:
-
-```bash
-cd cli && go run ./cmd/godot-bridge status
-cd cli && go run ./cmd/godot-bridge editor state
-cd cli && go run ./cmd/godot-bridge node add Sprite2D --parent /root/Main --name Hero --props '{"position":[200,150]}'
-```
-
-The CLI is a thin wrapper over the plugin protocol. The currently supported plugin-backed commands are documented in `cli/README.md`.
-
-You can also send JSON directly to `ws://localhost:6505`:
-
-```json
-{"id": "1", "command": "editor_state", "args": {}}
-{"id": "2", "command": "node_add", "args": {"type": "Sprite2D", "name": "Hero", "props": {"position": [200, 150]}}}
-{"id": "3", "command": "scene_save", "args": {}}
-```
-
-See `godot-plugin/README.md` for the plugin API surface.
+- Protect the default branch and require the `CI` workflow to pass before merging.
+- Allow GitHub Actions to write repository contents so the release workflow can create tags and releases.
 
 ## Requirements
 

@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == github.event.repository.default_branch }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Read release manifest
+        id: manifest
+        run: |
+          set -eu
+          cli_version=$(grep '^cli:' releases.yaml | cut -d: -f2 | xargs)
+          gdscript_lsp_version=$(grep '^gdscript-lsp:' releases.yaml | cut -d: -f2 | xargs)
+          echo "cli_version=$cli_version" >> "$GITHUB_OUTPUT"
+          echo "gdscript_lsp_version=$gdscript_lsp_version" >> "$GITHUB_OUTPUT"
+
+      - name: Create CLI release when needed
+        uses: actions/github-script@v7
+        env:
+          VERSION: ${{ steps.manifest.outputs.cli_version }}
+          TAG_NAME: cli/${{ steps.manifest.outputs.cli_version }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+        with:
+          script: |
+            const tag = process.env.TAG_NAME
+            const version = process.env.VERSION
+            const target = process.env.TARGET_SHA
+            if (!/^v\d+\.\d+\.\d+$/.test(version)) {
+              core.setFailed(`cli version must be semver like v1.2.3, got ${version}`)
+              return
+            }
+            try {
+              await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              })
+              core.info(`Release ${tag} already exists; skipping`)
+              return
+            } catch (error) {
+              if (error.status !== 404) throw error
+            }
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              target_commitish: target,
+              name: `CLI ${version}`,
+              generate_release_notes: true,
+            })
+            core.info(`Created release ${tag}`)
+
+      - name: Create GDScript LSP release when needed
+        uses: actions/github-script@v7
+        env:
+          VERSION: ${{ steps.manifest.outputs.gdscript_lsp_version }}
+          TAG_NAME: gdscript-lsp/${{ steps.manifest.outputs.gdscript_lsp_version }}
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+        with:
+          script: |
+            const tag = process.env.TAG_NAME
+            const version = process.env.VERSION
+            const target = process.env.TARGET_SHA
+            if (!/^v\d+\.\d+\.\d+$/.test(version)) {
+              core.setFailed(`gdscript-lsp version must be semver like v1.2.3, got ${version}`)
+              return
+            }
+            try {
+              await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              })
+              core.info(`Release ${tag} already exists; skipping`)
+              return
+            } catch (error) {
+              if (error.status !== 404) throw error
+            }
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              target_commitish: target,
+              name: `GDScript LSP ${version}`,
+              generate_release_notes: true,
+            })
+            core.info(`Created release ${tag}`)

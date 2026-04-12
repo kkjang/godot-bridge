@@ -17,11 +17,21 @@ The Godot editor does not need to have this repository open. This repo owns the 
 go build -o bin/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
 ```
 
+## Install
+
+Install the proxy onto `PATH` from any repository:
+
+```bash
+go install github.com/kkjang/godot-bridge/gdscript-lsp/cmd/gdscript-lsp-proxy@latest
+gdscript-lsp-proxy --version
+```
+
+The proxy is meant to be launched by an LSP client over stdio. It is not intended to run as a background service.
+
 ## Use with Claude Code
 
 ```bash
-cd gdscript-lsp && go build -o bin/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
-claude --plugin-dir ./integrations/claude
+claude --plugin-dir ./gdscript-lsp/integrations/claude
 ```
 
 Or install it permanently:
@@ -30,9 +40,15 @@ Or install it permanently:
 claude plugin install ./gdscript-lsp/integrations/claude
 ```
 
+The Claude integration expects `gdscript-lsp-proxy` to be available on `PATH`.
+
 ## Use with OpenCode
 
-Run `opencode` from the repo root after building the proxy. `opencode.json` configures:
+Copy or merge `integrations/opencode/opencode.json` into the game project's OpenCode config.
+
+The repo-root `opencode.json` is a convenience config for working in this repository itself. Both configs use `gdscript-lsp-proxy` from `PATH`.
+
+The OpenCode config enables:
 
 - `gopls` for `.go`
 - `gdscript-lsp-proxy` for `.gd`

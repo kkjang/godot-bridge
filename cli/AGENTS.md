@@ -20,6 +20,7 @@ Use `README.md` for the user-facing command surface. Use this file for implement
 
 ## Supported Commands
 
+- `godot-bridge version`
 - `godot-bridge status`
 - `godot-bridge spec [--markdown]`
 - `godot-bridge editor state`

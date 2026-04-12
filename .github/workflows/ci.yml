@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  GOOS: linux
+  GOARCH: arm64
+
+jobs:
+  build-cli:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+      - name: Build CLI
+        run: go build -o /tmp/godot-bridge ./cmd/godot-bridge
+      - name: Verify CLI version command
+        run: test -x /tmp/godot-bridge
+
+  build-gdscript-lsp:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gdscript-lsp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: gdscript-lsp/go.mod
+      - name: Build proxy
+        run: go build -o /tmp/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
+      - name: Verify proxy version command
+        run: test -x /tmp/gdscript-lsp-proxy
