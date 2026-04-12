@@ -1,0 +1,12 @@
+{
+  "gdscript": {
+    "command": "${CLAUDE_PLUGIN_ROOT}/bin/gdscript-lsp-proxy",
+    "args": [],
+    "extensionToLanguage": {
+      ".gd": "gdscript"
+    },
+    "env": {
+      "GODOT_LSP_PORT": "6005"
+    }
+  }
+}

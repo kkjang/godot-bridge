@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Go build outputs
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace
+vendor/
+dist/
+
+# GDScript / Godot
+.godot/
+*.import
+*.translation
+*.uid
+
+# Godot export presets (contain platform-specific paths, not shareable)
+export_presets.cfg
+
+# Godot export output
+export/
+
+# Editor metadata (project-specific, not repo config)
+.editorconfig.local
+
+# Python (used for ad-hoc testing scripts)
+__pycache__/
+*.pyc
+.venv/
+venv/
