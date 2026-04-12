@@ -1,13 +1,13 @@
 # cli
 
-Planned Go CLI for driving the Godot editor through the bridge plugin.
+Go CLI for driving the Godot editor through the bridge plugin.
 
-Use `README.md` for the planned user-facing command surface. Use this file for implementation guidance.
+Use `README.md` for the user-facing command surface. Use this file for implementation guidance.
 
 ## Scope
 
-- This area is not yet implemented.
 - Keep new work aligned with the command model documented here and in `README.md`.
+- This CLI only covers plugin-backed editor commands.
 
 ## Tooling
 
@@ -18,9 +18,10 @@ Use `README.md` for the planned user-facing command surface. Use this file for i
 - The CLI should be a thin shell around the Godot bridge protocol.
 - Prefer clear command mapping over heavy abstraction while the surface area is still evolving.
 
-## Planned Commands
+## Supported Commands
 
 - `godot-bridge status`
+- `godot-bridge spec [--markdown]`
 - `godot-bridge editor state`
 - `godot-bridge node tree [PATH]`
 - `godot-bridge node get PATH`
@@ -35,11 +36,7 @@ Use `README.md` for the planned user-facing command surface. Use this file for i
 - `godot-bridge scene stop`
 - `godot-bridge script open PATH`
 - `godot-bridge screenshot`
-- `godot-bridge file read PATH`
-- `godot-bridge file write PATH --content STR`
-- `godot-bridge file list [DIR]`
-- `godot-bridge file search QUERY`
-- `godot-bridge reference`
+- `godot-bridge resource list [DIR]`
 
 ## Design Constraints
 
@@ -48,6 +45,16 @@ Use `README.md` for the planned user-facing command surface. Use this file for i
 - Editor commands should use WebSocket `localhost:6505` with short connect and command timeouts.
 - Keep distribution simple: one fast static binary is preferred.
 
+## Spec Source Of Truth
+
+- The CLI's built-in `spec` output is the machine-readable source of truth for the public command surface.
+- When changing commands, flags, defaults, descriptions, or plugin mappings, update the code behind `godot-bridge spec` first.
+- After changing the spec, regenerate the README command table from `godot-bridge spec --markdown` so docs stay aligned with the shipped CLI.
+- Keep `README.md` and the built-in spec aligned. Do not manually edit the README command table without updating the CLI spec.
+- Keep `skills/godot-bridge.md` aligned with the built-in spec and current command behavior so users can copy it into their own agent setups.
+- Keep `skills/godot-bridge.md` generic across agent harnesses. Do not bake Claude-, OpenCode-, or tool-specific wiring into the generic skill.
+
 ## References
 
-- `README.md` - planned user-facing command surface
+- `README.md` - user-facing command surface and command table derived from `godot-bridge spec --markdown`
+- `skills/godot-bridge.md` - copyable agent skill for external setups
