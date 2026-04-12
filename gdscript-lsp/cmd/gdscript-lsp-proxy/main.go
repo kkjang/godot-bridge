@@ -1,5 +1,5 @@
-// gdscript-lsp-proxy bridges Claude Code's stdio-based LSP client to
-// Godot's TCP-based GDScript Language Server.
+// gdscript-lsp-proxy bridges stdio-based LSP clients to Godot's TCP-based
+// GDScript Language Server.
 //
 // Usage:
 //
@@ -9,10 +9,11 @@
 //
 //	GODOT_LSP_PORT  override default port 6005
 //
-// Claude Code launches language servers as stdio subprocesses, but Godot's
-// GDScript LSP listens on a TCP socket. This proxy sits in between:
+// AI coding tools like Claude Code and OpenCode launch language servers as
+// stdio subprocesses, but Godot's GDScript LSP listens on a TCP socket. This
+// proxy sits in between:
 //
-//	Claude Code  --stdio-->  gdscript-lsp-proxy  --TCP-->  Godot :6005
+//	stdio LSP client  --stdio-->  gdscript-lsp-proxy  --TCP-->  Godot :6005
 //
 // All LSP JSON-RPC messages are passed through verbatim; the proxy only
 // handles Content-Length framing and does no message interpretation.
@@ -45,9 +46,8 @@ func main() {
 	conn, err := net.Dial("tcp", "127.0.0.1:"+port)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gdscript-lsp-proxy: cannot connect to Godot LSP on port %s: %v\n", port, err)
-		// Send an LSP window/showMessage so the client sees a human-readable error.
 		errMsg := fmt.Sprintf(
-			`{"jsonrpc":"2.0","method":"window/showMessage","params":{"type":1,"message":"Godot editor not running — GDScript LSP unavailable on port %s"}}`,
+			`{"jsonrpc":"2.0","method":"window/showMessage","params":{"type":1,"message":"Godot editor not running - GDScript LSP unavailable on port %s"}}`,
 			port,
 		)
 		fmt.Printf("Content-Length: %d\r\n\r\n%s", len(errMsg), errMsg)
@@ -57,27 +57,22 @@ func main() {
 
 	done := make(chan error, 2)
 
-	// stdin → TCP
 	go func() {
 		done <- copyFramed(conn, os.Stdin)
 	}()
 
-	// TCP → stdout
 	go func() {
 		done <- copyFramed(os.Stdout, conn)
 	}()
 
-	// Exit as soon as either direction closes/errors.
 	if err := <-done; err != nil && err != io.EOF {
 		fmt.Fprintf(os.Stderr, "gdscript-lsp-proxy: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-// copyFramed reads LSP Content-Length–framed messages from src and writes
-// them identically to dst. It returns on the first read or write error.
 func copyFramed(dst io.Writer, src io.Reader) error {
-	r := bufio.NewReaderSize(src, 1<<20) // 1 MiB read buffer
+	r := bufio.NewReaderSize(src, 1<<20)
 	for {
 		cl, err := readHeaders(r)
 		if err != nil {
@@ -98,8 +93,6 @@ func copyFramed(dst io.Writer, src io.Reader) error {
 	}
 }
 
-// readHeaders reads LSP headers (terminated by a blank line) and returns the
-// value of the Content-Length header.
 func readHeaders(r *bufio.Reader) (int, error) {
 	var cl int
 	for {

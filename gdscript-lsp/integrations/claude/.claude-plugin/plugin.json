@@ -1,0 +1,8 @@
+{
+  "name": "godot-bridge-gdscript-lsp",
+  "version": "0.1.0",
+  "description": "GDScript language server support for Godot 4.x via the shared gdscript-lsp proxy",
+  "author": {
+    "name": "godot-bridge contributors"
+  }
+}

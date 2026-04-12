@@ -16,8 +16,8 @@
 vendor/
 dist/
 
-# Compiled binaries (build locally: cd claude-plugin && go build -o bin/gdscript-lsp-proxy ./src/)
-claude-plugin/bin/
+# Compiled binaries (build locally: cd gdscript-lsp && go build -o bin/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy)
+gdscript-lsp/bin/
 
 # GDScript / Godot
 .godot/
