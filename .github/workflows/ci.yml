@@ -21,6 +21,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: cli/go.mod
+          cache-dependency-path: cli/go.sum
       - name: Build CLI
         run: go build -o /tmp/godot-bridge ./cmd/godot-bridge
       - name: Verify CLI version command
@@ -36,6 +37,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: gdscript-lsp/go.mod
+          cache-dependency-path: gdscript-lsp/go.mod
       - name: Build proxy
         run: go build -o /tmp/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
       - name: Verify proxy version command
