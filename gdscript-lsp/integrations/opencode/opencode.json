@@ -1,17 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": [
-    "AGENTS.md"
-  ],
   "lsp": {
-    "gopls": {
-      "command": [
-        "gopls"
-      ],
-      "extensions": [
-        ".go"
-      ]
-    },
     "gdscript": {
       "command": [
         "gdscript-lsp-proxy"

@@ -18,6 +18,13 @@ For implementation guidance and protocol constraints while editing this plugin, 
    - `Bridge: Connected`
    - `Bridge: Error (port 6505)`
 
+Example copy command from this repository into a game project:
+
+```bash
+mkdir -p /path/to/game-project/addons
+cp -R godot-plugin/addons/godot_bridge /path/to/game-project/addons/
+```
+
 ## Changing the port
 
 The default port is `6505`. To change it, open **Project -> Project Settings -> General**, search for `godot_bridge/port`, update the value, and restart the editor.

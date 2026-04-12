@@ -25,11 +25,14 @@ import (
 	"io"
 	"net"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 )
 
 const defaultPort = "6005"
+
+var version = "dev"
 
 func main() {
 	port := defaultPort
@@ -37,9 +40,26 @@ func main() {
 		port = p
 	}
 	args := os.Args[1:]
-	for i, arg := range args {
-		if arg == "--port" && i+1 < len(args) {
-			port = args[i+1]
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch arg {
+		case "--version", "version":
+			fmt.Fprintln(os.Stdout, binaryVersion())
+			return
+		case "--help", "-h", "help":
+			fmt.Fprintln(os.Stdout, "Usage: gdscript-lsp-proxy [--port PORT] [--version]")
+			return
+		case "--port":
+			if i+1 >= len(args) {
+				fmt.Fprintln(os.Stderr, "gdscript-lsp-proxy: missing value for --port")
+				os.Exit(2)
+			}
+			i++
+			port = args[i]
+		default:
+			if value, ok := strings.CutPrefix(arg, "--port="); ok {
+				port = value
+			}
 		}
 	}
 
@@ -69,6 +89,20 @@ func main() {
 		fmt.Fprintf(os.Stderr, "gdscript-lsp-proxy: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func binaryVersion() string {
+	if version != "" && version != "dev" {
+		return version
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return version
+	}
+	if info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+	return version
 }
 
 func copyFramed(dst io.Writer, src io.Reader) error {

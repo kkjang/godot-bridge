@@ -35,7 +35,7 @@ go build -o bin/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
 ## Integrations
 
 - Claude Code wiring lives in `integrations/claude/`.
-- OpenCode wiring lives at the repo root in `opencode.json`.
+- OpenCode wiring lives in `integrations/opencode/`, with a repo-local convenience config at the repo root in `opencode.json`.
 - Both clients share the same proxy binary.
 
 ## Working Notes

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,7 +19,8 @@ import (
 )
 
 const defaultTimeout = 5 * time.Second
-const version = "dev"
+
+var version = "dev"
 
 type config struct {
 	host    string
@@ -208,6 +210,9 @@ func run(cfg config, args []string) error {
 	case "help":
 		printUsage(cfg.stdout)
 		return nil
+	case "version":
+		_, err := fmt.Fprintln(cfg.stdout, binaryVersion())
+		return err
 	case "status":
 		_, data, err := sendCommand(cfg, "editor_state", map[string]any{})
 		if err != nil {
@@ -685,6 +690,12 @@ func buildSpec() cliSpec {
 		},
 		Commands: []commandSpec{
 			{
+				Path:        []string{"version"},
+				Usage:       "godot-bridge version",
+				Description: "Prints the CLI version. Release builds replace the default dev value.",
+				OutputModes: []string{"text"},
+			},
+			{
 				Path:          []string{"status"},
 				Usage:         "godot-bridge status",
 				PluginCommand: "editor_state",
@@ -1046,10 +1057,25 @@ func emptyFallback(value string, fallback string) string {
 	return value
 }
 
+func binaryVersion() string {
+	if version != "" && version != "dev" {
+		return version
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return version
+	}
+	if info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+	return version
+}
+
 func printUsage(out *os.File) {
 	fmt.Fprintln(out, "Usage: godot-bridge [--host HOST] [--port PORT] [--timeout DURATION] [--json] <command>")
 	fmt.Fprintln(out, "")
 	fmt.Fprintln(out, "Commands:")
+	fmt.Fprintln(out, "  version")
 	fmt.Fprintln(out, "  status")
 	fmt.Fprintln(out, "  spec [--markdown]")
 	fmt.Fprintln(out, "  editor state")

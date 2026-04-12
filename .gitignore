@@ -17,6 +17,7 @@ vendor/
 dist/
 
 # Compiled binaries (build locally: cd gdscript-lsp && go build -o bin/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy)
+cli/bin/
 gdscript-lsp/bin/
 
 # GDScript / Godot
