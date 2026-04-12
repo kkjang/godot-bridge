@@ -70,6 +70,7 @@ Error:
 | `node_modify` | Set properties on an existing node. Args: node path, property dict |
 | `node_delete` | Remove a node from the tree |
 | `node_move` | Reparent or reorder a node |
+| `scene_new` | Create a new scene file and open it. Args: `path` (res:// path to save), `root_type` (default `Node2D`), `root_name` (default: type name) |
 | `scene_open` | Open a scene in the editor |
 | `scene_save` | Save the current scene |
 | `scene_run` | Run the current scene or the project (F5 / F6 equivalent) |
@@ -108,6 +109,7 @@ godot-bridge node add TYPE --parent PATH --name NAME [--props '{"key":"val"}']
 godot-bridge node modify PATH --props '{"position": [100, 200]}'
 godot-bridge node delete PATH
 godot-bridge node move PATH --new-parent PATH
+godot-bridge scene new PATH --root-type Node2D --root-name Main  Create and open a new scene
 godot-bridge scene open PATH    Open a scene file
 godot-bridge scene save         Save current scene
 godot-bridge scene run [PATH]   Run project or specific scene

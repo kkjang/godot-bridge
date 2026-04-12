@@ -8,54 +8,59 @@ See `PRD.md` for full specification.
 
 ---
 
-## Phase 1 — Minimum Viable Bridge
+## Phase 1 — Minimum Viable Bridge ✅
 
 ### Godot Plugin (`godot-plugin/addons/godot_bridge/`)
-Branch: `claude/godot-bridge-setup-uq2zf`
-
 - [x] `plugin.cfg` — plugin manifest
 - [x] `plugin.gd` — EditorPlugin entry point, starts/stops WebSocket server, status bar indicator
 - [x] `bridge_server.gd` — WebSocket server, command routing, JSON parsing
-- [x] Commands: `editor_state`, `node_tree`, `node_get`, `scene_open`, `scene_save`
-- [ ] Commands: `node_add`, `node_modify`, `node_delete`, `node_move` (Phase 2)
-- [ ] Commands: `scene_run`, `scene_stop` (Phase 3)
-- [ ] Commands: `script_open`, `resource_list`, `screenshot` (Phase 2)
-
-### Go CLI (`cli/`)
-Branch: TBD (separate session)
-
-- [ ] Project scaffold (`go.mod`, `cmd/`, `internal/`)
-- [ ] WebSocket client (`internal/connection/`)
-- [ ] `status` command
-- [ ] `editor state` command
-- [ ] `node tree`, `node get` commands
-- [ ] `scene open`, `scene save` commands
-- [ ] `file read`, `file write`, `file list`, `file search` commands
-- [ ] `reference` command (prints markdown cheat sheet)
+- [x] Commands: `editor_state`, `node_tree`, `node_get`, `scene_new`, `scene_open`, `scene_save`
 
 ### Supporting Files
-- [x] `PRD.md`
+- [x] `.claude/PRD.md`
 - [x] `.claude/PROGRESS.md` (this file)
-- [ ] `CLAUDE.md.example`
-- [ ] `README.md`
+- [x] `.claude/GODOT_PLUGIN.md`
+- [x] `.claude/CLAUDE_PLUGIN.md`
+- [x] `.claude/CLI.md`
+- [x] `godot-plugin/README.md`
+- [x] `claude-plugin/README.md`
+- [x] `cli/README.md`
+- [x] `README.md` (root)
 
 ---
 
-## Phase 2 — Full Node Manipulation
-Branch: TBD
+## Phase 2 — Full Node Manipulation ✅
 
-- [ ] Plugin: `node_add`, `node_modify`, `node_delete`, `node_move` with undo support
-- [ ] Plugin: `script_open`, `resource_list`, `screenshot`
-- [ ] CLI: corresponding subcommands
+### Godot Plugin
+- [x] `node_add` — add any node type by ClassDB name, with initial props
+- [x] `node_modify` — set properties via JSON, with undo support
+- [x] `node_delete` — remove a node with undo support
+- [x] `node_move` — reparent a node with undo support
+- [x] `script_open` — open a script in the editor
+- [x] `resource_list` — list files in a project directory
+- [x] `screenshot` — capture editor viewport as base64 PNG
+- [x] Property coercion: `Vector2`, `Vector3`, `Color`, `PackedVector2Array`, `PackedColorArray`
+- [x] Node paths use clean user-facing format (`/root/Main/Hero`, not editor-internal paths)
+
+### GDScript LSP proxy (`claude-plugin/`)
+- [x] stdio-to-TCP proxy source (`claude-plugin/src/main.go`)
+- [x] Pre-built binary (`claude-plugin/bin/gdscript-lsp-proxy`)
+- [x] Claude Code plugin wiring (`.lsp.json`, `.claude-plugin/plugin.json`)
+
+### Go CLI (`cli/`)
+- [ ] Project scaffold — not started
 
 ---
 
 ## Phase 3 — Run / Debug
-Branch: TBD
+- [x] `scene_run` — run project or specific scene (F5/F6 equivalent)
+- [x] `scene_stop` — stop running scene
+- [ ] Error event push (compile errors, runtime errors from running game)
 
-- [ ] Plugin: `scene_run`, `scene_stop`
-- [ ] Plugin: error event push (compile errors, runtime errors)
-- [ ] CLI: `scene run`, `scene stop`
+---
+
+## Not Planned / Out of Scope
+
 
 ---
 

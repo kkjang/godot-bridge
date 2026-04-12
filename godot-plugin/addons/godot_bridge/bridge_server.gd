@@ -124,6 +124,8 @@ func _dispatch(id: String, cmd: String, args: Dictionary) -> void:
 			_cmd_node_tree(id, args)
 		"node_get":
 			_cmd_node_get(id, args)
+		"scene_new":
+			_cmd_scene_new(id, args)
 		"scene_open":
 			_cmd_scene_open(id, args)
 		"scene_save":
@@ -174,24 +176,30 @@ func _send_json(payload: Dictionary) -> void:
 # Utility helpers
 # ---------------------------------------------------------------------------
 
-## Return the EditorInterface singleton (works in Godot 4.x).
-func _ei() -> EditorInterface:
-	return EditorInterface
-
-
 ## Resolve a node path string to an actual Node.
 ## Accepts /root/… absolute paths or scene-relative paths like Main/Player.
 func _resolve_node(path: String) -> Node:
-	var scene := _ei().get_edited_scene_root()
+	var scene := EditorInterface.get_edited_scene_root()
 	if scene == null:
 		return null
-	if path.is_empty() or path == "/" or path == scene.get_path():
+	var scene_prefix := "/root/" + str(scene.name)
+	if path.is_empty() or path == "/" or path == scene_prefix:
 		return scene
-	# Try absolute NodePath first, then relative to scene root.
-	var node := scene.get_tree().root.get_node_or_null(path)
-	if node == null:
-		node = scene.get_node_or_null(path)
-	return node
+	# Strip /root/<SceneName>/ prefix to get a scene-relative path.
+	var rel: String = path
+	if path.begins_with(scene_prefix + "/"):
+		rel = path.substr(scene_prefix.length() + 1)
+	return scene.get_node_or_null(rel)
+
+
+## Return the user-facing path for a node: /root/<SceneName>[/child/...].
+func _node_path(node: Node) -> String:
+	var scene := EditorInterface.get_edited_scene_root()
+	if scene == null:
+		return str(node.name)
+	if node == scene:
+		return "/root/" + str(scene.name)
+	return "/root/" + str(scene.name) + "/" + str(scene.get_path_to(node))
 
 
 ## Serialize a node for "brief" listing (name, type, child count).
@@ -199,7 +207,7 @@ func _node_brief(node: Node) -> Dictionary:
 	return {
 		"name":        node.name,
 		"type":        node.get_class(),
-		"path":        str(node.get_path()),
+		"path":        _node_path(node),
 		"child_count": node.get_child_count(),
 	}
 
@@ -270,6 +278,26 @@ func _json_to_variant(v, type_hint: int) -> Variant:
 			return int(v)
 		TYPE_FLOAT:
 			return float(v)
+		TYPE_PACKED_VECTOR2_ARRAY:
+			var arr := PackedVector2Array()
+			if v is Array:
+				for item in v:
+					if item is Array and item.size() >= 2:
+						arr.append(Vector2(item[0], item[1]))
+			return arr
+		TYPE_PACKED_COLOR_ARRAY:
+			var arr := PackedColorArray()
+			if v is Array:
+				for item in v:
+					if item is Array and item.size() >= 3:
+						arr.append(Color(item[0], item[1], item[2], item[3] if item.size() > 3 else 1.0))
+			return arr
+		TYPE_PACKED_FLOAT32_ARRAY, TYPE_PACKED_FLOAT64_ARRAY:
+			var arr := PackedFloat32Array()
+			if v is Array:
+				for item in v:
+					arr.append(float(item))
+			return arr
 	return v
 
 
@@ -278,18 +306,17 @@ func _json_to_variant(v, type_hint: int) -> Variant:
 # ---------------------------------------------------------------------------
 
 func _cmd_editor_state(id: String, _args: Dictionary) -> void:
-	var ei       := _ei()
-	var scene    := ei.get_edited_scene_root()
-	var selection: EditorSelection = ei.get_selection()
+	var scene    := EditorInterface.get_edited_scene_root()
+	var selection: EditorSelection = EditorInterface.get_selection()
 
 	var open_scenes := []
 	# get_open_scenes() returns PackedStringArray of paths
-	for path in ei.get_open_scenes():
+	for path in EditorInterface.get_open_scenes():
 		open_scenes.append(str(path))
 
 	var selected_paths := []
 	for node in selection.get_selected_nodes():
-		selected_paths.append(str(node.get_path()))
+		selected_paths.append(_node_path(node))
 
 	var data := {
 		"current_scene": str(scene.get_scene_file_path()) if scene else "",
@@ -301,13 +328,11 @@ func _cmd_editor_state(id: String, _args: Dictionary) -> void:
 
 
 func _current_screen_name() -> String:
-	# EditorInterface.get_editor_viewport() / set_main_screen_editor() variants
-	# The current screen is readable via the main screen buttons.
-	# As a lightweight approach we check which viewport is visible.
-	var ei := _ei()
-	if ei.get_editor_viewport_2d().visible:
+	var vp2d := EditorInterface.get_editor_viewport_2d()
+	if vp2d and vp2d.get_parent() and vp2d.get_parent().visible:
 		return "2D"
-	if ei.get_editor_viewport_3d(0).visible:
+	var vp3d := EditorInterface.get_editor_viewport_3d(0)
+	if vp3d and vp3d.get_parent() and vp3d.get_parent().visible:
 		return "3D"
 	return "Script"
 
@@ -323,7 +348,7 @@ func _cmd_node_tree(id: String, args: Dictionary) -> void:
 	var root := _resolve_node(path)
 	if root == null:
 		# Default to current scene root when no path given and scene is open.
-		root = _ei().get_edited_scene_root()
+		root = EditorInterface.get_edited_scene_root()
 	if root == null:
 		_send_error(id, "No scene is open")
 		return
@@ -380,6 +405,44 @@ func _cmd_node_get(id: String, args: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------------------
+# Commands — scene_new
+# ---------------------------------------------------------------------------
+
+func _cmd_scene_new(id: String, args: Dictionary) -> void:
+	var path      : String = str(args.get("path", ""))
+	var root_type : String = str(args.get("root_type", "Node2D"))
+	var root_name : String = str(args.get("root_name", ""))
+
+	if path.is_empty():
+		_send_error(id, "missing 'path' arg")
+		return
+	if not path.ends_with(".tscn"):
+		_send_error(id, "'path' must end with .tscn")
+		return
+	if not ClassDB.class_exists(root_type) or not ClassDB.is_parent_class(root_type, "Node"):
+		_send_error(id, "Unknown or non-Node root_type: " + root_type)
+		return
+
+	var root : Node = ClassDB.instantiate(root_type)
+	root.name = root_name if not root_name.is_empty() else root_type
+
+	var packed := PackedScene.new()
+	var err := packed.pack(root)
+	root.free()
+	if err != OK:
+		_send_error(id, "PackedScene.pack() failed (error %d)" % err)
+		return
+
+	err = ResourceSaver.save(packed, path)
+	if err != OK:
+		_send_error(id, "ResourceSaver.save() failed (error %d)" % err)
+		return
+
+	EditorInterface.open_scene_from_path(path)
+	_send_ok(id, {"path": path, "root_type": root_type})
+
+
+# ---------------------------------------------------------------------------
 # Commands — scene_open
 # ---------------------------------------------------------------------------
 
@@ -388,7 +451,7 @@ func _cmd_scene_open(id: String, args: Dictionary) -> void:
 	if path.is_empty():
 		_send_error(id, "missing 'path' arg")
 		return
-	_ei().open_scene_from_path(path)
+	EditorInterface.open_scene_from_path(path)
 	_send_ok(id, {"opened": path})
 
 
@@ -397,11 +460,11 @@ func _cmd_scene_open(id: String, args: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 
 func _cmd_scene_save(id: String, _args: Dictionary) -> void:
-	var scene := _ei().get_edited_scene_root()
+	var scene := EditorInterface.get_edited_scene_root()
 	if scene == null:
 		_send_error(id, "No scene is open")
 		return
-	_ei().save_scene()
+	EditorInterface.save_scene()
 	_send_ok(id, {"saved": str(scene.get_scene_file_path())})
 
 
@@ -421,7 +484,7 @@ func _cmd_node_add(id: String, args: Dictionary) -> void:
 
 	var parent := _resolve_node(parent_path)
 	if parent == null:
-		parent = _ei().get_edited_scene_root()
+		parent = EditorInterface.get_edited_scene_root()
 	if parent == null:
 		_send_error(id, "No scene open and no valid parent path")
 		return
@@ -442,14 +505,14 @@ func _cmd_node_add(id: String, args: Dictionary) -> void:
 	# Apply initial properties before adding to tree.
 	_apply_props(new_node, props)
 
-	var undo := _ei().get_editor_undo_redo()
+	var undo := EditorInterface.get_editor_undo_redo()
 	undo.create_action("Add node " + node_name)
 	undo.add_do_method(parent, "add_child", new_node, true)
-	undo.add_do_property(new_node, "owner", _ei().get_edited_scene_root())
+	undo.add_do_property(new_node, "owner", EditorInterface.get_edited_scene_root())
 	undo.add_undo_method(parent, "remove_child", new_node)
 	undo.commit_action()
 
-	_send_ok(id, {"path": str(new_node.get_path()), "name": str(new_node.name)})
+	_send_ok(id, {"path": _node_path(new_node), "name": str(new_node.name)})
 
 
 # ---------------------------------------------------------------------------
@@ -471,7 +534,7 @@ func _cmd_node_modify(id: String, args: Dictionary) -> void:
 		_send_error(id, "missing 'props' arg")
 		return
 
-	var undo := _ei().get_editor_undo_redo()
+	var undo := EditorInterface.get_editor_undo_redo()
 	undo.create_action("Modify node " + path)
 
 	for key in props:
@@ -503,11 +566,11 @@ func _cmd_node_delete(id: String, args: Dictionary) -> void:
 		_send_error(id, "Cannot delete root node")
 		return
 
-	var undo := _ei().get_editor_undo_redo()
+	var undo := EditorInterface.get_editor_undo_redo()
 	undo.create_action("Delete node " + path)
 	undo.add_do_method(parent, "remove_child", node)
 	undo.add_undo_method(parent, "add_child", node, true)
-	undo.add_undo_property(node, "owner", _ei().get_edited_scene_root())
+	undo.add_undo_property(node, "owner", EditorInterface.get_edited_scene_root())
 	undo.commit_action()
 
 	_send_ok(id, {"deleted": path})
@@ -540,13 +603,13 @@ func _cmd_node_move(id: String, args: Dictionary) -> void:
 		_send_error(id, "Cannot move root node")
 		return
 
-	var undo := _ei().get_editor_undo_redo()
+	var undo := EditorInterface.get_editor_undo_redo()
 	undo.create_action("Move node " + path)
 	undo.add_do_method(node,       "reparent", new_parent, true)
 	undo.add_undo_method(node,     "reparent", old_parent, true)
 	undo.commit_action()
 
-	_send_ok(id, {"moved": str(node.get_path())})
+	_send_ok(id, {"moved": _node_path(node)})
 
 
 # ---------------------------------------------------------------------------
@@ -556,14 +619,15 @@ func _cmd_node_move(id: String, args: Dictionary) -> void:
 func _cmd_scene_run(id: String, args: Dictionary) -> void:
 	var path : String = str(args.get("path", ""))
 	if path.is_empty():
-		_ei().play_main_scene()
+		EditorInterface.play_main_scene()
 	else:
-		_ei().play_scene(path)
+		EditorInterface.open_scene_from_path(path)
+		EditorInterface.play_current_scene()
 	_send_ok(id, {"running": true})
 
 
 func _cmd_scene_stop(id: String, _args: Dictionary) -> void:
-	_ei().stop_playing_scene()
+	EditorInterface.stop_playing_scene()
 	_send_ok(id, {"running": false})
 
 
@@ -580,7 +644,7 @@ func _cmd_script_open(id: String, args: Dictionary) -> void:
 	if script == null:
 		_send_error(id, "Could not load script: " + path)
 		return
-	_ei().edit_resource(script)
+	EditorInterface.edit_resource(script)
 	_send_ok(id, {"opened": path})
 
 
@@ -590,7 +654,7 @@ func _cmd_script_open(id: String, args: Dictionary) -> void:
 
 func _cmd_resource_list(id: String, args: Dictionary) -> void:
 	var dir_path : String = str(args.get("path", "res://"))
-	var fs := _ei().get_resource_filesystem()
+	var fs := EditorInterface.get_resource_filesystem()
 	var dir := fs.get_filesystem_path(dir_path)
 	if dir == null:
 		_send_error(id, "Directory not found: " + dir_path)
@@ -616,7 +680,7 @@ func _cmd_resource_list(id: String, args: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 
 func _cmd_screenshot(id: String, _args: Dictionary) -> void:
-	var viewport := _ei().get_editor_viewport_2d()
+	var viewport := EditorInterface.get_editor_viewport_2d()
 	var img      := viewport.get_texture().get_image()
 	var bytes    := img.save_png_to_buffer()
 	var b64      := Marshalls.raw_to_base64(bytes)
