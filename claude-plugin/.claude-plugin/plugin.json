@@ -1,8 +1,0 @@
-{
-  "name": "godot-bridge",
-  "version": "0.1.0",
-  "description": "GDScript language server support for Godot 4.x — bridges Claude Code's LSP tool to Godot's built-in GDScript LSP via a stdio-to-TCP proxy",
-  "author": {
-    "name": "godot-bridge contributors"
-  }
-}

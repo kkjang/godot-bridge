@@ -1,6 +1,6 @@
 {
   "gdscript": {
-    "command": "${CLAUDE_PLUGIN_ROOT}/bin/gdscript-lsp-proxy",
+    "command": "${CLAUDE_PLUGIN_ROOT}/../../bin/gdscript-lsp-proxy",
     "args": [],
     "extensionToLanguage": {
       ".gd": "gdscript"
