@@ -21,10 +21,10 @@ const BridgeDebugState = preload("res://addons/godot_bridge/bridge_debug_state.g
 const BridgeProjectSettings = preload("res://addons/godot_bridge/bridge_project_settings.gd")
 
 var _tcp_server  : TCPServer
-var _peer        : WebSocketPeer
 var _port        : int
-var _heartbeat_t : float = 0.0
-var _debug_state := BridgeDebugState.new()
+var _connections := {}
+var _next_connection_id := 1
+var _active_request_connection_id := -1
 var _script_debuggers: Array = []
 var _debug_backlog := []
 
@@ -45,7 +45,8 @@ func start(port: int) -> void:
 
 
 func stop() -> void:
-	_disconnect_peer()
+	for raw_connection_id in _connections.keys().duplicate():
+		_disconnect_connection(int(raw_connection_id))
 	if _tcp_server:
 		_tcp_server.stop()
 		_tcp_server = null
@@ -59,54 +60,95 @@ func _process(delta: float) -> void:
 	if not _tcp_server:
 		return
 
-	# Accept new connection only when no peer is active.
-	if _peer == null and _tcp_server.is_connection_available():
+	while _tcp_server.is_connection_available():
 		var stream := _tcp_server.take_connection()
-		_peer = WebSocketPeer.new()
-		var err := _peer.accept_stream(stream)
+		var peer := WebSocketPeer.new()
+		var err := peer.accept_stream(stream)
 		if err != OK:
 			push_warning("GodotBridge: accept_stream error %d" % err)
-			_peer = null
-			return
-		emit_signal("status_changed", "Connected")
+			continue
+		var connection_id := _next_connection_id
+		_next_connection_id += 1
+		_connections[connection_id] = {
+			"id": connection_id,
+			"peer": peer,
+			"heartbeat_t": 0.0,
+			"debug_state": BridgeDebugState.new(),
+		}
+		_emit_connection_status()
 
-	if _peer == null:
+	if _connections.is_empty():
 		return
 
-	_peer.poll()
-	var state := _peer.get_ready_state()
+	_hook_script_debuggers()
+
+	var dead_connection_ids := []
+	for raw_connection_id in _connections.keys().duplicate():
+		_poll_connection(int(raw_connection_id), delta, dead_connection_ids)
+
+	for connection_id in dead_connection_ids:
+		if _connections.has(connection_id):
+			_disconnect_connection(connection_id)
+
+
+func _poll_connection(connection_id: int, delta: float, dead_connection_ids: Array) -> void:
+	if not _connections.has(connection_id):
+		return
+
+	var connection: Dictionary = _connections[connection_id]
+	var peer: WebSocketPeer = connection.get("peer") as WebSocketPeer
+	if peer == null:
+		dead_connection_ids.append(connection_id)
+		return
+
+	peer.poll()
+	var state := peer.get_ready_state()
 
 	if state == WebSocketPeer.STATE_OPEN:
-		_hook_script_debuggers()
-		_heartbeat_t += delta
-		if _heartbeat_t >= HEARTBEAT_INTERVAL:
-			_heartbeat_t = 0.0
-			_peer.send_text('{"type":"ping"}')
+		connection["heartbeat_t"] = float(connection.get("heartbeat_t", 0.0)) + delta
+		if float(connection["heartbeat_t"]) >= HEARTBEAT_INTERVAL:
+			connection["heartbeat_t"] = 0.0
+			peer.send_text('{"type":"ping"}')
+		_connections[connection_id] = connection
 
-		while _peer.get_available_packet_count() > 0:
-			var raw := _peer.get_packet()
+		while peer.get_available_packet_count() > 0:
+			var raw := peer.get_packet()
 			var text := raw.get_string_from_utf8()
-			_handle_message(text)
+			_handle_message(connection_id, text)
 
 	elif state == WebSocketPeer.STATE_CLOSING:
-		pass  # wait for CLOSED
+		pass
 
 	elif state in [WebSocketPeer.STATE_CLOSED, -1]:
-		_disconnect_peer()
+		dead_connection_ids.append(connection_id)
+
+
+func _disconnect_connection(connection_id: int) -> void:
+	if not _connections.has(connection_id):
+		return
+
+	var connection: Dictionary = _connections[connection_id]
+	var peer: WebSocketPeer = connection.get("peer") as WebSocketPeer
+	if peer:
+		peer.close()
+	_connections.erase(connection_id)
+	if _active_request_connection_id == connection_id:
+		_active_request_connection_id = -1
+	_emit_connection_status()
+
+
+func _emit_connection_status() -> void:
+	if _connections.is_empty():
 		emit_signal("status_changed", "Listening :%d" % _port)
-
-
-func _disconnect_peer() -> void:
-	if _peer:
-		_peer.close()
-		_peer = null
+		return
+	emit_signal("status_changed", "Connected (%d)" % _connections.size())
 
 
 # ---------------------------------------------------------------------------
 # Message handling
 # ---------------------------------------------------------------------------
 
-func _handle_message(text: String) -> void:
+func _handle_message(connection_id: int, text: String) -> void:
 	var json := JSON.new()
 	var err  := json.parse(text)
 	if err != OK:
@@ -117,12 +159,15 @@ func _handle_message(text: String) -> void:
 	var id   : String     = str(msg.get("id",      ""))
 	var cmd  : String     = str(msg.get("command", ""))
 	var args : Dictionary = msg.get("args", {}) as Dictionary
+	_active_request_connection_id = connection_id
 
 	if cmd.is_empty():
 		_send_error(id, "missing 'command' field")
+		_active_request_connection_id = -1
 		return
 
 	_dispatch(id, cmd, args)
+	_active_request_connection_id = -1
 
 
 func _dispatch(id: String, cmd: String, args: Dictionary) -> void:
@@ -191,27 +236,28 @@ func _dispatch(id: String, cmd: String, args: Dictionary) -> void:
 
 func _send_ok(id: String, data: Dictionary) -> void:
 	var payload := {"id": id, "ok": true, "data": data}
-	_send_json(payload)
+	_send_json(_active_request_connection_id, payload)
 
 
 func _send_error(id: String, message: String) -> void:
 	var payload := {"id": id, "ok": false, "error": message}
-	_send_json(payload)
+	_send_json(_active_request_connection_id, payload)
 
 
-func _send_json(payload: Dictionary) -> void:
-	if _peer == null or _peer.get_ready_state() != WebSocketPeer.STATE_OPEN:
+func _send_json(connection_id: int, payload: Dictionary) -> void:
+	if not _connections.has(connection_id):
 		return
-	_peer.send_text(JSON.stringify(payload))
+	var connection: Dictionary = _connections[connection_id]
+	var peer: WebSocketPeer = connection.get("peer") as WebSocketPeer
+	if peer == null or peer.get_ready_state() != WebSocketPeer.STATE_OPEN:
+		return
+	peer.send_text(JSON.stringify(payload))
 
 
 func push_debug_event(event_name: String, data: Dictionary) -> void:
 	_record_debug_event(event_name, data)
-	# TODO: subscriptions are global because the bridge only supports one client.
-	# Support independent subscriptions once the transport allows multiple streams.
-	if not _debug_state.should_forward(event_name):
-		return
-	_send_json({"type": "event", "event": event_name, "data": data})
+	for connection_id in _connection_ids_for_event(event_name):
+		_send_json(connection_id, {"type": "event", "event": event_name, "data": data})
 
 
 # ---------------------------------------------------------------------------
@@ -962,14 +1008,22 @@ func _animation_value_from_json(track_path: String, value, player: AnimationPlay
 func _cmd_debug_subscribe(id: String, args: Dictionary) -> void:
 	var events := args.get("events", []) as Array
 	_hook_script_debuggers()
-	var subscribed := _debug_state.subscribe(events)
-	_replay_debug_backlog(subscribed)
+	var debug_state := _active_debug_state()
+	if debug_state == null:
+		_send_error(id, "debug subscription connection is not available")
+		return
+	var subscribed := debug_state.subscribe(events)
+	_replay_debug_backlog(_active_request_connection_id, subscribed)
 	_send_ok(id, {"subscribed": subscribed})
 
 
 func _cmd_debug_unsubscribe(id: String, args: Dictionary) -> void:
 	var events := args.get("events", []) as Array
-	_send_ok(id, {"subscribed": _debug_state.unsubscribe(events)})
+	var debug_state := _active_debug_state()
+	if debug_state == null:
+		_send_error(id, "debug subscription connection is not available")
+		return
+	_send_ok(id, {"subscribed": debug_state.unsubscribe(events)})
 
 
 func _hook_script_debuggers() -> void:
@@ -1007,17 +1061,41 @@ func _record_debug_event(event_name: String, data: Dictionary) -> void:
 		_debug_backlog.pop_front()
 
 
-func _replay_debug_backlog(subscribed_events: Array[String]) -> void:
+func _replay_debug_backlog(connection_id: int, subscribed_events: Array[String]) -> void:
+	for payload in _build_debug_event_payloads(subscribed_events):
+		_send_json(connection_id, payload)
+
+
+func _active_debug_state() -> BridgeDebugState:
+	if not _connections.has(_active_request_connection_id):
+		return null
+	return _connections[_active_request_connection_id].get("debug_state") as BridgeDebugState
+
+
+func _connection_ids_for_event(event_name: String) -> Array[int]:
+	var connection_ids: Array[int] = []
+	for raw_connection_id in _connections.keys():
+		var connection_id := int(raw_connection_id)
+		var debug_state := _connections[connection_id].get("debug_state") as BridgeDebugState
+		if debug_state != null and debug_state.should_forward(event_name):
+			connection_ids.append(connection_id)
+	return connection_ids
+
+
+func _build_debug_event_payloads(subscribed_events: Array[String]) -> Array[Dictionary]:
+	var payloads: Array[Dictionary] = []
 	var allow_all := subscribed_events.is_empty()
 	for event_entry in _debug_backlog:
-		var event_name := str((event_entry as Dictionary).get("event", ""))
+		var entry := event_entry as Dictionary
+		var event_name := str(entry.get("event", ""))
 		if not allow_all and not subscribed_events.has(event_name):
 			continue
-		_send_json({
+		payloads.append({
 			"type": "event",
 			"event": event_name,
-			"data": (event_entry as Dictionary).get("data", {}),
+			"data": entry.get("data", {}),
 		})
+	return payloads
 
 
 # ---------------------------------------------------------------------------

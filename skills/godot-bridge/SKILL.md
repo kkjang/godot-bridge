@@ -51,6 +51,16 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 4. For scene structure, use `godot-bridge node tree [PATH] --json` or `godot-bridge node get PATH --detail full --json`.
 5. For edits, prefer small explicit operations such as `node add`, `node modify`, `node move`, `node delete`, then `scene save`.
 6. Use `godot-bridge screenshot --json` when you need to inspect the current 2D editor viewport visually.
+7. For live runtime output, `godot-bridge debug watch --json` can stay connected while other CLI commands run in parallel.
+
+## Editor Safety
+
+- Keep one editor instance per target project unless you intentionally need more.
+- Do not replace plugin files inside a live project while the editor is running. Close the editor, update files, then relaunch.
+- Prefer `status`, `editor state`, `node tree`, and `node get` for bridge validation before reaching for `scene run`.
+- Use `scene run` sparingly in manual validation because it spawns a game child process. Prefer a short self-terminating test scene if you need runtime output.
+- If a run was interrupted or the editor crashed, check for leftover `Godot` child processes before relaunching more test sessions.
+- For more detailed live-editor workflow guidance, see `docs/godot-agent-workflow.md` in this repository.
 
 ## Common commands
 
@@ -74,4 +84,4 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 - `resource list` uses Godot's resource filesystem view, so paths should be `res://...`.
 - `scene run` without a path runs the main scene. With a path, it opens and runs that scene.
 - `screenshot` returns metadata in text mode and image payload data in JSON mode.
-- `debug watch` holds the single bridge connection open today, so run it in a separate terminal when you still need other bridge commands.
+- `debug watch` uses its own websocket connection and can run alongside other CLI commands.

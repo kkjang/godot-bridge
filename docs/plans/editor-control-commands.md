@@ -155,8 +155,8 @@ This is backward-compatible — the CLI already filters `"type": "ping"` message
 - Exits on SIGINT
 - Requires new `sendAndStream()` function alongside existing `sendCommand()`
 
-### Single-client limitation
-The bridge accepts one client at a time. `debug watch` holding a connection open blocks other CLI commands. Acceptable for v1 — document the limitation.
+### Historical single-client limitation
+At the time of this plan, the bridge accepted one client at a time and `debug watch` blocked other CLI commands. That limitation has since been removed by the multi-connection transport work.
 
 ---
 
