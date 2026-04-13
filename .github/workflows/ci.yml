@@ -7,7 +7,28 @@ on:
   pull_request:
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      cli: ${{ steps.filter.outputs.cli }}
+      godot-plugin: ${{ steps.filter.outputs.godot-plugin }}
+      gdscript-lsp: ${{ steps.filter.outputs.gdscript-lsp }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            cli:
+              - 'cli/**'
+            godot-plugin:
+              - 'godot-plugin/**'
+            gdscript-lsp:
+              - 'gdscript-lsp/**'
+
   build-cli:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.cli == 'true'
     runs-on: ubuntu-24.04-arm
     defaults:
       run:
@@ -26,6 +47,8 @@ jobs:
         run: test -x /tmp/godot-bridge
 
   build-godot-plugin:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.godot-plugin == 'true'
     runs-on: ubuntu-latest
     container: barichello/godot-ci:4.3
     defaults:
@@ -37,6 +60,8 @@ jobs:
         run: bash scripts/test.sh
 
   build-gdscript-lsp:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.gdscript-lsp == 'true'
     runs-on: ubuntu-24.04-arm
     defaults:
       run:
