@@ -2,6 +2,7 @@ extends SceneTree
 
 const TEST_FILES := [
 	"res://tests/test_bridge_server.gd",
+	"res://tests/test_debug_error_payloads.gd",
 	"res://tests/test_debug_state.gd",
 	"res://tests/test_project_settings.gd",
 	"res://tests/test_animation_codec.gd",

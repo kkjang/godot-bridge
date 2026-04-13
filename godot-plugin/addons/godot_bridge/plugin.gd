@@ -2,10 +2,8 @@
 extends EditorPlugin
 
 const BridgeServer = preload("res://addons/godot_bridge/bridge_server.gd")
-const BridgeDebugger = preload("res://addons/godot_bridge/bridge_debugger.gd")
 
 var _server: BridgeServer
-var _debugger: BridgeDebugger
 var _status_label: Label
 
 
@@ -13,9 +11,6 @@ func _enter_tree() -> void:
 	_server = BridgeServer.new()
 	_server.status_changed.connect(_on_status_changed)
 	add_child(_server)
-
-	_debugger = BridgeDebugger.new(_server)
-	add_debugger_plugin(_debugger)
 
 	_status_label = Label.new()
 	_status_label.text = "Bridge: Starting…"
@@ -26,10 +21,6 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
-	if _debugger:
-		remove_debugger_plugin(_debugger)
-		_debugger = null
-
 	if _server:
 		_server.stop()
 		remove_child(_server)
