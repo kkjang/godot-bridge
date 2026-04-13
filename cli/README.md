@@ -61,7 +61,6 @@ The built-in `godot-bridge spec` command is the machine-readable source of truth
 - Use `godot-bridge spec --markdown` to regenerate the command table below.
 - When the CLI command surface changes, update the built-in spec first and then refresh this README table from it.
 - Keep `../skills/godot-bridge/SKILL.md` aligned with the built-in spec and current command behavior.
-- Keep `../skills/godot-bridge/SKILL.md` harness-neutral. Put tool-specific wiring in separate adapter docs rather than the generic skill.
 
 ## Transport flags
 
