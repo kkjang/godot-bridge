@@ -34,12 +34,12 @@ func _test_build_debug_event_payloads_filters_backlog(failures: Array[String]) -
 		{"event": "error", "data": {"message": "boom"}},
 	]
 
-	var output_payloads := server._build_debug_event_payloads(["output"])
+	var output_payloads: Array[Dictionary] = server._build_debug_event_payloads(["output"])
 	_assert_eq(failures, output_payloads.size(), 1, "output-only replay should include one event")
 	if output_payloads.size() == 1:
 		_assert_eq(failures, output_payloads[0].get("event", ""), "output", "output-only replay should keep the output event")
 
-	var all_payloads := server._build_debug_event_payloads([])
+	var all_payloads: Array[Dictionary] = server._build_debug_event_payloads([])
 	_assert_eq(failures, all_payloads.size(), 2, "empty subscription replay should include all backlog events")
 	server.free()
 
