@@ -14,6 +14,7 @@ signal status_changed(status: String)
 
 const HEARTBEAT_INTERVAL := 10.0
 const RESPONSE_TIMEOUT   := 30.0
+const DEBUG_EVENT_BACKLOG_LIMIT := 200
 
 const BridgeAnimationCodec = preload("res://addons/godot_bridge/bridge_animation_codec.gd")
 const BridgeDebugState = preload("res://addons/godot_bridge/bridge_debug_state.gd")
@@ -24,6 +25,8 @@ var _peer        : WebSocketPeer
 var _port        : int
 var _heartbeat_t : float = 0.0
 var _debug_state := BridgeDebugState.new()
+var _script_debuggers: Array = []
+var _debug_backlog := []
 
 
 # ---------------------------------------------------------------------------
@@ -74,6 +77,7 @@ func _process(delta: float) -> void:
 	var state := _peer.get_ready_state()
 
 	if state == WebSocketPeer.STATE_OPEN:
+		_hook_script_debuggers()
 		_heartbeat_t += delta
 		if _heartbeat_t >= HEARTBEAT_INTERVAL:
 			_heartbeat_t = 0.0
@@ -202,6 +206,7 @@ func _send_json(payload: Dictionary) -> void:
 
 
 func push_debug_event(event_name: String, data: Dictionary) -> void:
+	_record_debug_event(event_name, data)
 	# TODO: subscriptions are global because the bridge only supports one client.
 	# Support independent subscriptions once the transport allows multiple streams.
 	if not _debug_state.should_forward(event_name):
@@ -926,7 +931,7 @@ func _ensure_default_animation_library(player: AnimationPlayer) -> AnimationLibr
 	return library
 
 
-func _animation_value_from_json(player: AnimationPlayer, track_path: String, value):
+func _animation_value_from_json(track_path: String, value, player: AnimationPlayer):
 	var separator := track_path.find(":")
 	if separator == -1:
 		return value
@@ -956,12 +961,63 @@ func _animation_value_from_json(player: AnimationPlayer, track_path: String, val
 
 func _cmd_debug_subscribe(id: String, args: Dictionary) -> void:
 	var events := args.get("events", []) as Array
-	_send_ok(id, {"subscribed": _debug_state.subscribe(events)})
+	_hook_script_debuggers()
+	var subscribed := _debug_state.subscribe(events)
+	_replay_debug_backlog(subscribed)
+	_send_ok(id, {"subscribed": subscribed})
 
 
 func _cmd_debug_unsubscribe(id: String, args: Dictionary) -> void:
 	var events := args.get("events", []) as Array
 	_send_ok(id, {"subscribed": _debug_state.unsubscribe(events)})
+
+
+func _hook_script_debuggers() -> void:
+	var base_control := EditorInterface.get_base_control()
+	if base_control == null:
+		return
+
+	var live_debuggers := []
+	for debugger in base_control.find_children("*", "ScriptEditorDebugger", true, false):
+		if not is_instance_valid(debugger):
+			continue
+		live_debuggers.append(debugger)
+		var output_callable := Callable(self, "_on_script_debugger_output")
+		if not debugger.output.is_connected(output_callable):
+			debugger.output.connect(output_callable)
+	_script_debuggers = live_debuggers
+
+
+func _on_script_debugger_output(message: String, level: int) -> void:
+	var payload := {
+		"message": message,
+		"timestamp": Time.get_ticks_msec(),
+	}
+	if level == 1 or level == 3:
+		payload["script"] = ""
+		payload["line"] = 0
+		push_debug_event("error", payload)
+		return
+	push_debug_event("output", payload)
+
+
+func _record_debug_event(event_name: String, data: Dictionary) -> void:
+	_debug_backlog.append({"event": event_name, "data": data.duplicate(true)})
+	if _debug_backlog.size() > DEBUG_EVENT_BACKLOG_LIMIT:
+		_debug_backlog.pop_front()
+
+
+func _replay_debug_backlog(subscribed_events: Array[String]) -> void:
+	var allow_all := subscribed_events.is_empty()
+	for event_entry in _debug_backlog:
+		var event_name := str((event_entry as Dictionary).get("event", ""))
+		if not allow_all and not subscribed_events.has(event_name):
+			continue
+		_send_json({
+			"type": "event",
+			"event": event_name,
+			"data": (event_entry as Dictionary).get("data", {}),
+		})
 
 
 # ---------------------------------------------------------------------------

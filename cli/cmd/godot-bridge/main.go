@@ -662,7 +662,7 @@ func parseJSONObject(text string, label string) (map[string]any, error) {
 func buildSpec() cliSpec {
 	return cliSpec{
 		Name:        "godot-bridge",
-		Version:     version,
+		Version:     binaryVersion(),
 		Description: "Thin CLI wrapper around the Godot Bridge editor plugin.",
 		TransportFlags: []flagSpec{
 			{Name: "--host", Default: "127.0.0.1", Description: "Godot bridge host."},
