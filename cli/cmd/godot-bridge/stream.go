@@ -131,6 +131,10 @@ func readMessage(ctx context.Context, conn websocketReader, timeout time.Duratio
 		if err := conn.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 			return response{}, err
 		}
+	} else {
+		if err := conn.SetReadDeadline(time.Time{}); err != nil {
+			return response{}, err
+		}
 	}
 	_, payload, err := conn.ReadMessage()
 	if err != nil {
