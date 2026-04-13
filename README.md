@@ -62,7 +62,7 @@ The repo-root `opencode.json` is also usable directly when working in this repos
 
 ### 4. Copy the Godot plugin into the game project
 
-Copy `godot-plugin/addons/godot_bridge/` into the target game's `addons/` directory, then enable it in **Project -> Project Settings -> Plugins**.
+Copy `godot-plugin/addons/godot_bridge/` into the target game's `addons/` directory.
 
 Example:
 
@@ -71,11 +71,17 @@ mkdir -p /path/to/game-project/addons
 cp -R godot-plugin/addons/godot_bridge /path/to/game-project/addons/
 ```
 
-After enabling the plugin, verify the bottom panel shows one of:
+Then enable **Godot Bridge** in **Project -> Project Settings -> Plugins**.
+
+Wait until the bottom panel shows one of:
 
 - `Bridge: Listening :6505`
 - `Bridge: Connected`
 - `Bridge: Error (port 6505)`
+
+If an agent is driving setup, it should pause here and wait for the user to confirm the plugin has been enabled.
+
+Agents may optionally enable the plugin by editing `project.godot`, but that is less reliable than the UI flow and usually requires reopening the Godot editor before the plugin loads.
 
 ## Verify the setup
 
