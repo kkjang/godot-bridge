@@ -58,3 +58,20 @@ func TestWaitForResponseReturnsPluginErrors(t *testing.T) {
 		t.Fatalf("waitForResponse() error = %v, want boom", err)
 	}
 }
+
+func TestReadMessageClearsReadDeadlineForStreaming(t *testing.T) {
+	reader := &fakeWebsocketReader{messages: [][]byte{
+		[]byte(`{"type":"event","event":"output","data":{"message":"hello"}}`),
+	}}
+
+	msg, err := readMessage(context.Background(), reader, 0)
+	if err != nil {
+		t.Fatalf("readMessage() error = %v", err)
+	}
+	if msg.Type != "event" || msg.Event != "output" {
+		t.Fatalf("message = %#v, want output event", msg)
+	}
+	if reader.setDeadlineCalls != 1 {
+		t.Fatalf("SetReadDeadline calls = %d, want 1", reader.setDeadlineCalls)
+	}
+}

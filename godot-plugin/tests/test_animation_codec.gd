@@ -6,6 +6,7 @@ const BridgeAnimationCodec = preload("res://addons/godot_bridge/bridge_animation
 func run() -> Array[String]:
 	var failures: Array[String] = []
 	_test_build_animation_creates_value_track(failures)
+	_test_build_animation_uses_bound_value_parser_arguments_in_order(failures)
 	_test_apply_animation_changes_replaces_matching_tracks(failures)
 	return failures
 
@@ -32,6 +33,19 @@ func _test_build_animation_creates_value_track(failures: Array[String]) -> void:
 		failures.append("build_animation should set the track path")
 	if animation.track_get_key_count(0) != 2:
 		failures.append("build_animation should insert keyframes")
+
+
+func _test_build_animation_uses_bound_value_parser_arguments_in_order(failures: Array[String]) -> void:
+	var animation := BridgeAnimationCodec.build_animation({
+		"tracks": [
+			{"path": ".:frame", "type": "value", "keyframes": [{"time": 0.0, "value": 7}]}
+		],
+	}, Callable(self, "_bound_value_parser").bind("marker"))
+
+	if animation.track_get_key_count(0) != 1:
+		failures.append("bound value parser should still insert keyframes")
+	elif animation.track_get_key_value(0, 0) != 14:
+		failures.append("bound value parser should receive track path and value before bound args")
 
 
 func _test_apply_animation_changes_replaces_matching_tracks(failures: Array[String]) -> void:
@@ -69,3 +83,9 @@ func _find_track(animation: Animation, track_path: String) -> int:
 		if str(animation.track_get_path(index)) == track_path:
 			return index
 	return -1
+
+
+func _bound_value_parser(track_path: String, value, marker: String):
+	if track_path != ".:frame" or marker != "marker":
+		return -1
+	return int(value) * 2
