@@ -26,7 +26,7 @@ jobs:
         run: test -x /tmp/godot-bridge
 
   build-godot-plugin:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     container: barichello/godot-ci:4.3
     defaults:
       run:
