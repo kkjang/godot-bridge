@@ -6,10 +6,6 @@ on:
       - main
   pull_request:
 
-env:
-  GOOS: linux
-  GOARCH: arm64
-
 jobs:
   build-cli:
     runs-on: ubuntu-latest
@@ -25,6 +21,9 @@ jobs:
       - name: Run CLI unit tests
         run: go test ./...
       - name: Build CLI
+        env:
+          GOOS: linux
+          GOARCH: arm64
         run: go build -o /tmp/godot-bridge ./cmd/godot-bridge
       - name: Verify CLI version command
         run: test -x /tmp/godot-bridge
@@ -52,6 +51,9 @@ jobs:
           go-version-file: gdscript-lsp/go.mod
           cache-dependency-path: gdscript-lsp/go.mod
       - name: Build proxy
+        env:
+          GOOS: linux
+          GOARCH: arm64
         run: go build -o /tmp/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
       - name: Verify proxy version command
         run: test -x /tmp/gdscript-lsp-proxy
