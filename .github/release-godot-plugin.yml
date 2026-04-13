@@ -2,4 +2,4 @@ changelog:
   categories:
     - title: Godot Plugin Changes
       labels:
-        - component: godot-plugin
+        - "component: godot-plugin"
