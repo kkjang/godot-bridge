@@ -13,10 +13,13 @@ For implementation guidance and protocol constraints while editing this plugin, 
 
 1. Copy `addons/godot_bridge/` into your project's `addons/` directory.
 2. Enable **Godot Bridge** in **Project -> Project Settings -> Plugins**.
-3. Verify the bottom panel shows one of these states:
+3. Wait until the bottom panel shows one of these states:
    - `Bridge: Listening :6505`
    - `Bridge: Connected`
    - `Bridge: Error (port 6505)`
+4. If an agent is driving setup, pause here and wait for the user to confirm the plugin has been enabled.
+
+Agents may optionally enable the plugin by editing `project.godot`, but that is less reliable than the UI flow and usually requires reopening the Godot editor before the plugin loads.
 
 Example copy command from this repository into a game project:
 
