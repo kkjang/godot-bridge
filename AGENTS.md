@@ -66,6 +66,7 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
 
 - `cli/`, `gdscript-lsp/`, and `godot-plugin/` are versioned independently through `releases.yaml`.
 - Use a small release PR to bump versions intentionally. Do not infer or bump release versions casually.
+- When cutting a `godot-plugin` release PR, also update `godot-plugin/addons/godot_bridge/plugin.cfg` so `version` matches the release number without the leading `v`.
 - Release versions must be semver strings like `v0.1.0`.
 - The requested versions map to module tags:
   - `cli: vX.Y.Z` -> `cli/vX.Y.Z`

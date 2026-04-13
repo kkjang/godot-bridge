@@ -155,11 +155,12 @@ Releases are driven by `releases.yaml` on the default branch.
 
 1. Open a small release PR.
 2. Bump one or both versions in `releases.yaml`.
-3. Merge only after the `CI` workflow passes.
-4. After merge, the `Release` workflow runs only for successful `CI` runs on the default branch.
-5. If a requested release does not already exist, the workflow creates:
-   - a git tag for the module version
-   - a GitHub Release with generated release notes
+3. If the plugin release changes, update `godot-plugin/addons/godot_bridge/plugin.cfg` so its `version` matches `releases.yaml` without the leading `v`.
+4. Merge only after the `CI` workflow passes.
+5. After merge, the `Release` workflow runs only for successful `CI` runs on the default branch.
+6. If a requested release does not already exist, the workflow creates:
+    - a git tag for the module version
+    - a GitHub Release with generated release notes
 
 Examples:
 
