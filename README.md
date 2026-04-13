@@ -108,6 +108,27 @@ If the plugin is reachable, `godot-bridge status` prints `connected`.
 | [`gdscript-lsp/`](gdscript-lsp/README.md) | Shared GDScript LSP bridge plus tool-specific integrations |
 | [`cli/`](cli/README.md) | `godot-bridge` CLI (Go) for editor control through the plugin |
 
+## Test All Components
+
+Run these from the repository root:
+
+```bash
+(cd cli && go test ./...)
+(cd gdscript-lsp && go test ./...)
+(cd godot-plugin && bash scripts/test.sh)
+```
+
+Notes:
+
+- `cli/` uses Go unit tests.
+- `gdscript-lsp/` uses Go unit tests.
+- `godot-plugin/` uses a headless Godot test project in `godot-plugin/`.
+- On macOS, if `godot` is not on `PATH`, point the plugin test runner at the app bundle binary:
+
+```bash
+(cd godot-plugin && GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" bash scripts/test.sh)
+```
+
 ## Release model
 
 `cli/` and `gdscript-lsp/` are separate Go modules and should be versioned independently.

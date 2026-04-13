@@ -17,6 +17,12 @@ The Godot editor does not need to have this repository open. This repo owns the 
 go build -o bin/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
 ```
 
+## Test
+
+```bash
+go test ./...
+```
+
 ## Install
 
 Install the proxy onto `PATH` from any repository:

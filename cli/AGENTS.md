@@ -46,6 +46,11 @@ Use `README.md` for the user-facing command surface. Use this file for implement
 - Editor commands should use WebSocket `localhost:6505` with short connect and command timeouts.
 - Keep distribution simple: one fast static binary is preferred.
 
+## Validation
+
+- Run `go test ./...` from `cli/` for CLI unit tests.
+- Run `go build -o /tmp/godot-bridge ./cmd/godot-bridge` from `cli/` when you need to verify the binary still builds.
+
 ## Spec Source Of Truth
 
 - The CLI's built-in `spec` output is the machine-readable source of truth for the public command surface.

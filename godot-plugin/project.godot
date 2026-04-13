@@ -1,0 +1,9 @@
+; Engine configuration file.
+; Used as a lightweight headless test project for the bridge plugin.
+
+config_version=5
+
+[application]
+
+config/name="godot-bridge-plugin-tests"
+run/main_scene=""

@@ -27,6 +27,11 @@ Use `README.md` for installation and operator-facing usage. Use this file when c
 - Port is configurable via Godot project setting `godot_bridge/port`
 - Single client at a time with a heartbeat ping every 10 seconds
 
+## Validation
+
+- Run `bash scripts/test.sh` from `godot-plugin/` for headless plugin unit tests.
+- On macOS, if Godot is not on `PATH`, run `GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" bash scripts/test.sh`.
+
 ## Protocol
 
 - Messages are JSON over WebSocket text frames.

@@ -37,6 +37,7 @@ The default port is `6505`. To change it, open **Project -> Project Settings -> 
 - Endpoint: `ws://localhost:6505`
 - Transport: JSON over WebSocket text frames
 - One client connection at a time
+- `debug_subscribe` style streaming holds that single connection open today
 
 Example request:
 
@@ -59,10 +60,25 @@ Example error response:
 ## Supported commands
 
 - Editor state: `editor_state`
-- Node inspection and edits: `node_tree`, `node_get`, `node_add`, `node_modify`, `node_delete`, `node_move`
+- Node inspection and edits: `node_tree`, `node_get`, `node_add`, `node_modify`, `node_delete`, `node_move`, `node_instance`
+- Signal wiring: `signal_connect`, `signal_disconnect`, `signal_connections`
+- Project settings: `project_get`, `project_set`
+- Animation authoring: `animation_list`, `animation_get`, `animation_new`, `animation_modify`
 - Scene actions: `scene_new`, `scene_open`, `scene_save`, `scene_run`, `scene_stop`
+- Debug streaming: `debug_subscribe`, `debug_unsubscribe`
 - Script and resource access: `script_open`, `resource_list`
 - Capture: `screenshot`
+
+## Build And Test
+
+- Run plugin unit tests from `godot-plugin/` with `bash scripts/test.sh`.
+- CI treats that headless test run as the plugin build step.
+- Release packaging uses `bash scripts/package.sh vX.Y.Z`, which produces a zip containing `addons/godot_bridge/`.
+- On macOS, if Godot is not on `PATH`, run `GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" bash scripts/test.sh`.
+
+## Current Limitation
+
+`debug_subscribe` streams events over the same WebSocket used for normal commands. Because the bridge only accepts one client today, a long-running debug stream blocks other CLI commands until it exits. The server code includes a TODO to move this to per-stream subscriptions when the transport supports multiple streams.
 
 ## Troubleshooting
 

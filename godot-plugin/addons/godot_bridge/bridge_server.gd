@@ -15,10 +15,15 @@ signal status_changed(status: String)
 const HEARTBEAT_INTERVAL := 10.0
 const RESPONSE_TIMEOUT   := 30.0
 
+const BridgeAnimationCodec = preload("res://addons/godot_bridge/bridge_animation_codec.gd")
+const BridgeDebugState = preload("res://addons/godot_bridge/bridge_debug_state.gd")
+const BridgeProjectSettings = preload("res://addons/godot_bridge/bridge_project_settings.gd")
+
 var _tcp_server  : TCPServer
 var _peer        : WebSocketPeer
 var _port        : int
 var _heartbeat_t : float = 0.0
+var _debug_state := BridgeDebugState.new()
 
 
 # ---------------------------------------------------------------------------
@@ -144,6 +149,30 @@ func _dispatch(id: String, cmd: String, args: Dictionary) -> void:
 			_cmd_scene_stop(id, args)
 		"script_open":
 			_cmd_script_open(id, args)
+		"signal_connect":
+			_cmd_signal_connect(id, args)
+		"signal_disconnect":
+			_cmd_signal_disconnect(id, args)
+		"signal_connections":
+			_cmd_signal_connections(id, args)
+		"node_instance":
+			_cmd_node_instance(id, args)
+		"project_get":
+			_cmd_project_get(id, args)
+		"project_set":
+			_cmd_project_set(id, args)
+		"animation_list":
+			_cmd_animation_list(id, args)
+		"animation_get":
+			_cmd_animation_get(id, args)
+		"animation_new":
+			_cmd_animation_new(id, args)
+		"animation_modify":
+			_cmd_animation_modify(id, args)
+		"debug_subscribe":
+			_cmd_debug_subscribe(id, args)
+		"debug_unsubscribe":
+			_cmd_debug_unsubscribe(id, args)
 		"resource_list":
 			_cmd_resource_list(id, args)
 		"screenshot":
@@ -170,6 +199,14 @@ func _send_json(payload: Dictionary) -> void:
 	if _peer == null or _peer.get_ready_state() != WebSocketPeer.STATE_OPEN:
 		return
 	_peer.send_text(JSON.stringify(payload))
+
+
+func push_debug_event(event_name: String, data: Dictionary) -> void:
+	# TODO: subscriptions are global because the bridge only supports one client.
+	# Support independent subscriptions once the transport allows multiple streams.
+	if not _debug_state.should_forward(event_name):
+		return
+	_send_json({"type": "event", "event": event_name, "data": data})
 
 
 # ---------------------------------------------------------------------------
@@ -251,6 +288,10 @@ func _variant_to_json(v) -> Variant:
 		TYPE_NODE_PATH:
 			return str(v)
 		TYPE_STRING_NAME:
+			return str(v)
+		TYPE_OBJECT:
+			if v is Resource and not v.resource_path.is_empty():
+				return v.resource_path
 			return str(v)
 		_:
 			# bool, int, float, String all pass through cleanly
@@ -610,6 +651,317 @@ func _cmd_node_move(id: String, args: Dictionary) -> void:
 	undo.commit_action()
 
 	_send_ok(id, {"moved": _node_path(node)})
+
+
+# ---------------------------------------------------------------------------
+# Commands — signals
+# ---------------------------------------------------------------------------
+
+func _cmd_signal_connect(id: String, args: Dictionary) -> void:
+	var source_path := str(args.get("source", ""))
+	var signal_name := str(args.get("signal", ""))
+	var target_path := str(args.get("target", ""))
+	var method_name := str(args.get("method", ""))
+	if source_path.is_empty() or signal_name.is_empty() or target_path.is_empty() or method_name.is_empty():
+		_send_error(id, "missing signal connection args")
+		return
+
+	var source := _resolve_node(source_path)
+	var target := _resolve_node(target_path)
+	if source == null:
+		_send_error(id, "Node not found: " + source_path)
+		return
+	if target == null:
+		_send_error(id, "Node not found: " + target_path)
+		return
+	if not source.has_signal(signal_name):
+		_send_error(id, "Signal not found on source: " + signal_name)
+		return
+
+	var callable := Callable(target, method_name)
+	if source.is_connected(signal_name, callable):
+		_send_error(id, "Signal is already connected")
+		return
+
+	var undo := EditorInterface.get_editor_undo_redo()
+	undo.create_action("Connect signal " + signal_name)
+	undo.add_do_method(source, "connect", signal_name, callable)
+	undo.add_undo_method(source, "disconnect", signal_name, callable)
+	undo.commit_action()
+	_send_ok(id, {"source": source_path, "signal": signal_name, "target": target_path, "method": method_name})
+
+
+func _cmd_signal_disconnect(id: String, args: Dictionary) -> void:
+	var source_path := str(args.get("source", ""))
+	var signal_name := str(args.get("signal", ""))
+	var target_path := str(args.get("target", ""))
+	var method_name := str(args.get("method", ""))
+	if source_path.is_empty() or signal_name.is_empty() or target_path.is_empty() or method_name.is_empty():
+		_send_error(id, "missing signal disconnection args")
+		return
+
+	var source := _resolve_node(source_path)
+	var target := _resolve_node(target_path)
+	if source == null:
+		_send_error(id, "Node not found: " + source_path)
+		return
+	if target == null:
+		_send_error(id, "Node not found: " + target_path)
+		return
+
+	var callable := Callable(target, method_name)
+	if not source.is_connected(signal_name, callable):
+		_send_error(id, "Signal is not connected")
+		return
+
+	var undo := EditorInterface.get_editor_undo_redo()
+	undo.create_action("Disconnect signal " + signal_name)
+	undo.add_do_method(source, "disconnect", signal_name, callable)
+	undo.add_undo_method(source, "connect", signal_name, callable)
+	undo.commit_action()
+	_send_ok(id, {"source": source_path, "signal": signal_name, "target": target_path, "method": method_name})
+
+
+func _cmd_signal_connections(id: String, args: Dictionary) -> void:
+	var path := str(args.get("path", ""))
+	if path.is_empty():
+		_send_error(id, "missing 'path' arg")
+		return
+
+	var node := _resolve_node(path)
+	if node == null:
+		_send_error(id, "Node not found: " + path)
+		return
+
+	var connections := []
+	for signal_info in node.get_signal_list():
+		var signal_name := str(signal_info.get("name", ""))
+		for connection in node.get_signal_connection_list(signal_name):
+			var callable: Callable = connection.get("callable", Callable())
+			var target = callable.get_object()
+			connections.append({
+				"signal": signal_name,
+				"target": _node_path(target) if target is Node else "",
+				"method": str(callable.get_method()),
+				"flags": int(connection.get("flags", 0)),
+			})
+	_send_ok(id, {"connections": connections})
+
+
+# ---------------------------------------------------------------------------
+# Commands — node_instance
+# ---------------------------------------------------------------------------
+
+func _cmd_node_instance(id: String, args: Dictionary) -> void:
+	var scene_path := str(args.get("scene", ""))
+	var parent_path := str(args.get("parent", ""))
+	var node_name := str(args.get("name", ""))
+	if scene_path.is_empty():
+		_send_error(id, "missing 'scene' arg")
+		return
+
+	var parent := _resolve_node(parent_path)
+	if parent == null:
+		parent = EditorInterface.get_edited_scene_root()
+	if parent == null:
+		_send_error(id, "No scene open and no valid parent path")
+		return
+
+	var packed := load(scene_path)
+	if packed == null or not (packed is PackedScene):
+		_send_error(id, "scene is not a PackedScene: " + scene_path)
+		return
+
+	var instance := (packed as PackedScene).instantiate()
+	if not instance is Node:
+		_send_error(id, "instanced root is not a Node")
+		return
+	if not node_name.is_empty():
+		instance.name = node_name
+
+	var owner := EditorInterface.get_edited_scene_root()
+	var undo := EditorInterface.get_editor_undo_redo()
+	undo.create_action("Instance scene " + scene_path)
+	undo.add_do_method(parent, "add_child", instance, true)
+	undo.add_do_property(instance, "owner", owner)
+	undo.add_undo_method(parent, "remove_child", instance)
+	undo.commit_action()
+	_send_ok(id, _node_brief(instance))
+
+
+# ---------------------------------------------------------------------------
+# Commands — project settings
+# ---------------------------------------------------------------------------
+
+func _cmd_project_get(id: String, args: Dictionary) -> void:
+	var keys := args.get("keys", []) as Array
+	var prefix := str(args.get("prefix", ""))
+	if keys.is_empty() and prefix.is_empty():
+		_send_error(id, "project_get requires 'keys' and/or 'prefix'")
+		return
+
+	var settings := BridgeProjectSettings.read_settings(
+		ProjectSettings.get_property_list(),
+		Callable(ProjectSettings, "get_setting"),
+		keys,
+		prefix
+	)
+	for key in settings.keys():
+		settings[key] = _variant_to_json(settings[key])
+	_send_ok(id, {"settings": settings})
+
+
+func _cmd_project_set(id: String, args: Dictionary) -> void:
+	var settings := args.get("settings", {}) as Dictionary
+	if settings.is_empty():
+		_send_error(id, "missing 'settings' arg")
+		return
+
+	var updated := []
+	for key in settings.keys():
+		ProjectSettings.set_setting(str(key), settings[key])
+		updated.append(str(key))
+	var err := ProjectSettings.save()
+	if err != OK:
+		_send_error(id, "ProjectSettings.save() failed (error %d)" % err)
+		return
+	updated.sort()
+	_send_ok(id, {"updated": updated})
+
+
+# ---------------------------------------------------------------------------
+# Commands — animation
+# ---------------------------------------------------------------------------
+
+func _cmd_animation_list(id: String, args: Dictionary) -> void:
+	var player := _resolve_animation_player(str(args.get("path", "")))
+	if player == null:
+		_send_error(id, "AnimationPlayer not found")
+		return
+
+	var animations := []
+	for animation_name in player.get_animation_list():
+		var name := str(animation_name)
+		animations.append(BridgeAnimationCodec.animation_summary(name, player.get_animation(name)))
+	_send_ok(id, {"animations": animations})
+
+
+func _cmd_animation_get(id: String, args: Dictionary) -> void:
+	var player := _resolve_animation_player(str(args.get("path", "")))
+	var animation_name := str(args.get("animation", ""))
+	if player == null:
+		_send_error(id, "AnimationPlayer not found")
+		return
+	if animation_name.is_empty() or not player.has_animation(animation_name):
+		_send_error(id, "Animation not found: " + animation_name)
+		return
+	_send_ok(id, BridgeAnimationCodec.animation_detail(animation_name, player.get_animation(animation_name), Callable(self, "_variant_to_json")))
+
+
+func _cmd_animation_new(id: String, args: Dictionary) -> void:
+	var player := _resolve_animation_player(str(args.get("path", "")))
+	var animation_name := str(args.get("name", ""))
+	if player == null:
+		_send_error(id, "AnimationPlayer not found")
+		return
+	if animation_name.is_empty():
+		_send_error(id, "missing 'name' arg")
+		return
+
+	var library := _ensure_default_animation_library(player)
+	if library.has_animation(animation_name):
+		_send_error(id, "Animation already exists: " + animation_name)
+		return
+
+	var animation := BridgeAnimationCodec.build_animation(args, Callable(self, "_animation_value_from_json").bind(player))
+	var undo := EditorInterface.get_editor_undo_redo()
+	undo.create_action("Create animation " + animation_name)
+	undo.add_do_method(library, "add_animation", animation_name, animation)
+	undo.add_undo_method(library, "remove_animation", animation_name)
+	undo.commit_action()
+	_send_ok(id, BridgeAnimationCodec.animation_summary(animation_name, animation))
+
+
+func _cmd_animation_modify(id: String, args: Dictionary) -> void:
+	var player := _resolve_animation_player(str(args.get("path", "")))
+	var animation_name := str(args.get("animation", ""))
+	if player == null:
+		_send_error(id, "AnimationPlayer not found")
+		return
+	if animation_name.is_empty() or not player.has_animation(animation_name):
+		_send_error(id, "Animation not found: " + animation_name)
+		return
+
+	var library := _ensure_default_animation_library(player)
+	if not library.has_animation(animation_name):
+		_send_error(id, "Only animations in the default library can be modified")
+		return
+	var existing := library.get_animation(animation_name)
+	var updated := BridgeAnimationCodec.apply_animation_changes(existing, args, Callable(self, "_animation_value_from_json").bind(player))
+
+	var undo := EditorInterface.get_editor_undo_redo()
+	undo.create_action("Modify animation " + animation_name)
+	undo.add_do_method(library, "remove_animation", animation_name)
+	undo.add_do_method(library, "add_animation", animation_name, updated)
+	undo.add_undo_method(library, "remove_animation", animation_name)
+	undo.add_undo_method(library, "add_animation", animation_name, existing)
+	undo.commit_action()
+	_send_ok(id, BridgeAnimationCodec.animation_summary(animation_name, updated))
+
+
+func _resolve_animation_player(path: String) -> AnimationPlayer:
+	if path.is_empty():
+		return null
+	var node := _resolve_node(path)
+	if node == null or not (node is AnimationPlayer):
+		return null
+	return node as AnimationPlayer
+
+
+func _ensure_default_animation_library(player: AnimationPlayer) -> AnimationLibrary:
+	var library := player.get_animation_library("")
+	if library == null:
+		library = AnimationLibrary.new()
+		player.add_animation_library("", library)
+	return library
+
+
+func _animation_value_from_json(player: AnimationPlayer, track_path: String, value):
+	var separator := track_path.find(":")
+	if separator == -1:
+		return value
+	var node_path := track_path.substr(0, separator)
+	var property_name := track_path.substr(separator + 1)
+	var root_node := player.get_node_or_null(player.get_root())
+	if root_node == null:
+		root_node = player.get_parent()
+	if root_node == null:
+		return value
+	var target: Node = null
+	if node_path.is_empty() or node_path == ".":
+		target = root_node
+	else:
+		target = root_node.get_node_or_null(NodePath(node_path))
+	if target == null:
+		return value
+	for property_info in target.get_property_list():
+		if str(property_info.get("name", "")) == property_name:
+			return _json_to_variant(value, int(property_info.get("type", TYPE_NIL)))
+	return value
+
+
+# ---------------------------------------------------------------------------
+# Commands — debug subscriptions
+# ---------------------------------------------------------------------------
+
+func _cmd_debug_subscribe(id: String, args: Dictionary) -> void:
+	var events := args.get("events", []) as Array
+	_send_ok(id, {"subscribed": _debug_state.subscribe(events)})
+
+
+func _cmd_debug_unsubscribe(id: String, args: Dictionary) -> void:
+	var events := args.get("events", []) as Array
+	_send_ok(id, {"subscribed": _debug_state.unsubscribe(events)})
 
 
 # ---------------------------------------------------------------------------

@@ -1,21 +1,16 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 const defaultTimeout = 5 * time.Second
@@ -43,6 +38,7 @@ type response struct {
 	Data  json.RawMessage `json:"data"`
 	Error string          `json:"error"`
 	Type  string          `json:"type"`
+	Event string          `json:"event"`
 }
 
 type nodeTree struct {
@@ -233,6 +229,14 @@ func run(cfg config, args []string) error {
 		return runScene(cfg, args[1:])
 	case "script":
 		return runScript(cfg, args[1:])
+	case "signal":
+		return runSignal(cfg, args[1:])
+	case "project":
+		return runProject(cfg, args[1:])
+	case "animation":
+		return runAnimation(cfg, args[1:])
+	case "debug":
+		return runDebug(cfg, args[1:])
 	case "screenshot":
 		return runScreenshot(cfg, args[1:])
 	case "resource":
@@ -281,7 +285,7 @@ func runEditor(cfg config, args []string) error {
 
 func runNode(cfg config, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: godot-bridge node <tree|get|add|modify|delete|move> ...")
+		return errors.New("usage: godot-bridge node <tree|get|add|modify|delete|move|instance> ...")
 	}
 
 	switch args[0] {
@@ -440,6 +444,33 @@ func runNode(cfg config, args []string) error {
 			return err
 		}
 		_, err = fmt.Fprintf(cfg.stdout, "moved %s\n", payload.Moved)
+		return err
+	case "instance":
+		fs := flag.NewFlagSet("node instance", flag.ContinueOnError)
+		fs.SetOutput(cfg.stderr)
+		parent := fs.String("parent", "", "")
+		name := fs.String("name", "", "")
+		if err := fs.Parse(reorderFlags(args[1:], "parent", "name")); err != nil {
+			return err
+		}
+		if fs.NArg() != 1 {
+			return errors.New("usage: godot-bridge node instance SCENE_PATH [--parent PATH] [--name NAME]")
+		}
+		_, data, err := sendCommand(cfg, "node_instance", map[string]any{"scene": fs.Arg(0), "parent": *parent, "name": *name})
+		if err != nil {
+			return err
+		}
+		if cfg.asJSON {
+			return writeRawJSON(cfg.stdout, data)
+		}
+		var payload struct {
+			Path string `json:"path"`
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(data, &payload); err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(cfg.stdout, "instanced %s at %s\n", payload.Name, payload.Path)
 		return err
 	default:
 		return fmt.Errorf("unknown node command %q", args[0])
@@ -617,55 +648,6 @@ func runResource(cfg config, args []string) error {
 	return printResourceList(cfg.stdout, listing)
 }
 
-func sendCommand(cfg config, command string, args map[string]any) (response, json.RawMessage, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.timeout)
-	defer cancel()
-
-	u := url.URL{Scheme: "ws", Host: fmt.Sprintf("%s:%d", cfg.host, cfg.port)}
-	dialer := websocket.Dialer{HandshakeTimeout: cfg.timeout}
-	conn, resp, err := dialer.DialContext(ctx, u.String(), http.Header{})
-	if err != nil {
-		if resp != nil {
-			return response{}, nil, fmt.Errorf("cannot connect to Godot bridge at %s: %w", u.String(), err)
-		}
-		return response{}, nil, fmt.Errorf("cannot connect to Godot bridge at %s: %w", u.String(), err)
-	}
-	defer conn.Close()
-
-	id := strconv.FormatInt(time.Now().UnixNano(), 10)
-	if err := conn.SetWriteDeadline(time.Now().Add(cfg.timeout)); err != nil {
-		return response{}, nil, err
-	}
-	if err := conn.WriteJSON(request{ID: id, Command: command, Args: args}); err != nil {
-		return response{}, nil, fmt.Errorf("sending %s command: %w", command, err)
-	}
-
-	for {
-		if err := conn.SetReadDeadline(time.Now().Add(cfg.timeout)); err != nil {
-			return response{}, nil, err
-		}
-		_, payload, err := conn.ReadMessage()
-		if err != nil {
-			return response{}, nil, fmt.Errorf("waiting for %s response: %w", command, err)
-		}
-
-		var respMsg response
-		if err := json.Unmarshal(payload, &respMsg); err != nil {
-			return response{}, nil, fmt.Errorf("decoding response: %w", err)
-		}
-		if respMsg.Type == "ping" {
-			continue
-		}
-		if respMsg.ID != id {
-			continue
-		}
-		if !respMsg.OK {
-			return response{}, nil, errors.New(respMsg.Error)
-		}
-		return respMsg, respMsg.Data, nil
-	}
-}
-
 func parseJSONObject(text string, label string) (map[string]any, error) {
 	var out map[string]any
 	if err := json.Unmarshal([]byte(text), &out); err != nil {
@@ -779,6 +761,16 @@ func buildSpec() cliSpec {
 				OutputModes:   []string{"text", "json"},
 			},
 			{
+				Path:          []string{"node", "instance"},
+				Usage:         "godot-bridge node instance SCENE_PATH [--parent PATH] [--name NAME]",
+				PluginCommand: "node_instance",
+				RequiredArgs:  []string{"SCENE_PATH"},
+				OptionalArgs:  []string{"--parent PATH", "--name NAME", "--json"},
+				Defaults:      []string{"parent=\"\"", "name=scene root name"},
+				Description:   "Instances a PackedScene under the target parent or the current scene root.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
 				Path:          []string{"scene", "new"},
 				Usage:         "godot-bridge scene new PATH [--root-type TYPE] [--root-name NAME]",
 				PluginCommand: "scene_new",
@@ -832,6 +824,95 @@ func buildSpec() cliSpec {
 				OutputModes:   []string{"text", "json"},
 			},
 			{
+				Path:          []string{"signal", "connect"},
+				Usage:         "godot-bridge signal connect --source PATH --signal NAME --target PATH --method NAME",
+				PluginCommand: "signal_connect",
+				RequiredArgs:  []string{"--source PATH", "--signal NAME", "--target PATH", "--method NAME"},
+				OptionalArgs:  []string{"--json"},
+				Description:   "Connects a signal from one node to a method on another node.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"signal", "disconnect"},
+				Usage:         "godot-bridge signal disconnect --source PATH --signal NAME --target PATH --method NAME",
+				PluginCommand: "signal_disconnect",
+				RequiredArgs:  []string{"--source PATH", "--signal NAME", "--target PATH", "--method NAME"},
+				OptionalArgs:  []string{"--json"},
+				Description:   "Removes an existing signal connection.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"signal", "list"},
+				Usage:         "godot-bridge signal list PATH",
+				PluginCommand: "signal_connections",
+				RequiredArgs:  []string{"PATH"},
+				OptionalArgs:  []string{"--json"},
+				Description:   "Lists outgoing signal connections from a node.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"project", "get"},
+				Usage:         "godot-bridge project get [--keys KEY,...] [--prefix PREFIX]",
+				PluginCommand: "project_get",
+				OptionalArgs:  []string{"--keys KEY,...", "--prefix PREFIX", "--json"},
+				Description:   "Reads project settings by explicit keys, prefix, or both.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"project", "set"},
+				Usage:         "godot-bridge project set --settings JSON",
+				PluginCommand: "project_set",
+				RequiredArgs:  []string{"--settings JSON"},
+				OptionalArgs:  []string{"--json"},
+				Description:   "Updates project settings and saves the project configuration.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"animation", "list"},
+				Usage:         "godot-bridge animation list PATH",
+				PluginCommand: "animation_list",
+				RequiredArgs:  []string{"PATH"},
+				OptionalArgs:  []string{"--json"},
+				Description:   "Lists animations on an AnimationPlayer.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"animation", "get"},
+				Usage:         "godot-bridge animation get PATH --animation NAME",
+				PluginCommand: "animation_get",
+				RequiredArgs:  []string{"PATH", "--animation NAME"},
+				OptionalArgs:  []string{"--json"},
+				Description:   "Shows track and keyframe data for one animation.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"animation", "new"},
+				Usage:         "godot-bridge animation new PATH --data JSON",
+				PluginCommand: "animation_new",
+				RequiredArgs:  []string{"PATH", "--data JSON"},
+				OptionalArgs:  []string{"--json"},
+				Description:   "Creates a new animation from JSON data on an AnimationPlayer.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"animation", "modify"},
+				Usage:         "godot-bridge animation modify PATH --animation NAME --data JSON",
+				PluginCommand: "animation_modify",
+				RequiredArgs:  []string{"PATH", "--animation NAME", "--data JSON"},
+				OptionalArgs:  []string{"--json"},
+				Description:   "Updates an existing animation using JSON track data.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"debug", "watch"},
+				Usage:         "godot-bridge debug watch [--events output,error] [--json]",
+				PluginCommand: "debug_subscribe",
+				OptionalArgs:  []string{"--events output,error", "--json"},
+				Defaults:      []string{"events=all"},
+				Description:   "Subscribes to streamed debug events and prints them until interrupted.",
+				OutputModes:   []string{"text", "jsonl"},
+			},
+			{
 				Path:          []string{"screenshot"},
 				Usage:         "godot-bridge screenshot",
 				PluginCommand: "screenshot",
@@ -853,6 +934,7 @@ func buildSpec() cliSpec {
 		Notes: []string{
 			"This CLI only covers plugin-backed editor commands.",
 			"The README command spec table should be regenerated from `godot-bridge spec --markdown` whenever the command surface changes.",
+			"`debug watch` holds the single bridge connection open today, so other CLI commands are blocked until it exits.",
 		},
 	}
 }
@@ -1050,6 +1132,10 @@ func writeJSON(out *os.File, value any) error {
 	return encoder.Encode(value)
 }
 
+func writeJSONLine(out *os.File, value any) error {
+	return json.NewEncoder(out).Encode(value)
+}
+
 func emptyFallback(value string, fallback string) string {
 	if value == "" {
 		return fallback
@@ -1085,12 +1171,23 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  node modify PATH --props JSON")
 	fmt.Fprintln(out, "  node delete PATH")
 	fmt.Fprintln(out, "  node move PATH --new-parent PATH")
+	fmt.Fprintln(out, "  node instance SCENE_PATH [--parent PATH] [--name NAME]")
 	fmt.Fprintln(out, "  scene new PATH [--root-type TYPE] [--root-name NAME]")
 	fmt.Fprintln(out, "  scene open PATH")
 	fmt.Fprintln(out, "  scene save")
 	fmt.Fprintln(out, "  scene run [PATH]")
 	fmt.Fprintln(out, "  scene stop")
 	fmt.Fprintln(out, "  script open PATH")
+	fmt.Fprintln(out, "  signal connect --source PATH --signal NAME --target PATH --method NAME")
+	fmt.Fprintln(out, "  signal disconnect --source PATH --signal NAME --target PATH --method NAME")
+	fmt.Fprintln(out, "  signal list PATH")
+	fmt.Fprintln(out, "  project get [--keys KEY,...] [--prefix PREFIX]")
+	fmt.Fprintln(out, "  project set --settings JSON")
+	fmt.Fprintln(out, "  animation list PATH")
+	fmt.Fprintln(out, "  animation get PATH --animation NAME")
+	fmt.Fprintln(out, "  animation new PATH --data JSON")
+	fmt.Fprintln(out, "  animation modify PATH --animation NAME --data JSON")
+	fmt.Fprintln(out, "  debug watch [--events output,error] [--json]")
 	fmt.Fprintln(out, "  screenshot")
 	fmt.Fprintln(out, "  resource list [DIR]")
 }

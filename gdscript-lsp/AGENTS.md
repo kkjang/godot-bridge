@@ -26,6 +26,12 @@ Use `README.md` for setup and integration steps. Use this file for implementatio
 go build -o bin/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
 ```
 
+## Validation
+
+```bash
+go test ./...
+```
+
 ## Supported LSP Surface
 
 - Works for `documentSymbol`, `hover`, `goToDefinition`, and `findReferences`.
