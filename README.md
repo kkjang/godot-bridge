@@ -14,6 +14,8 @@ For coding-agent implementation guidance inside this repo, see `AGENTS.md`.
 
 These are the four setup steps an agent or user should follow when enabling Godot Bridge in a real game repository.
 
+If you are working through an agent, you can point the agent directly at this section instead of manually performing each installation step yourself.
+
 ### 1. Install `gdscript-lsp-proxy`
 
 Install the proxy onto `PATH`:
@@ -40,9 +42,11 @@ godot-bridge version
 
 The CLI talks to the Godot Bridge editor plugin over WebSocket on `127.0.0.1:6505` by default.
 
-### 3. Install GDScript LSP config for your agent harness
+### 3. Install agent config and skills for your harness
 
 Start with the included Claude and OpenCode integrations.
+
+The reusable Godot Bridge skill lives in `skills/godot-bridge/SKILL.md`. Copy or adapt it into the target game project's harness-specific skill location however your agent expects skills to be loaded.
 
 **Claude Code**
 
@@ -59,6 +63,8 @@ The Claude plugin now invokes `gdscript-lsp-proxy` from `PATH`.
 Copy or merge `gdscript-lsp/integrations/opencode/opencode.json` into the root OpenCode config for your game project.
 
 The repo-root `opencode.json` is also usable directly when working in this repository.
+
+If your OpenCode setup uses skills, copy `skills/godot-bridge/SKILL.md` into one of OpenCode's discovered skill locations for the target game project.
 
 ### 4. Copy the Godot plugin into the game project
 

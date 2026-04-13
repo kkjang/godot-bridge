@@ -52,10 +52,10 @@ Use `README.md` for the user-facing command surface. Use this file for implement
 - When changing commands, flags, defaults, descriptions, or plugin mappings, update the code behind `godot-bridge spec` first.
 - After changing the spec, regenerate the README command table from `godot-bridge spec --markdown` so docs stay aligned with the shipped CLI.
 - Keep `README.md` and the built-in spec aligned. Do not manually edit the README command table without updating the CLI spec.
-- Keep `skills/godot-bridge.md` aligned with the built-in spec and current command behavior so users can copy it into their own agent setups.
-- Keep `skills/godot-bridge.md` generic across agent harnesses. Do not bake Claude-, OpenCode-, or tool-specific wiring into the generic skill.
+- Keep `../skills/godot-bridge/SKILL.md` aligned with the built-in spec and current command behavior where it describes CLI usage so users can copy it into their own agent setups.
+- Keep `../skills/godot-bridge/SKILL.md` generic across agent harnesses. Do not bake Claude-, OpenCode-, or tool-specific wiring into the generic skill.
 
 ## References
 
 - `README.md` - user-facing command surface and command table derived from `godot-bridge spec --markdown`
-- `skills/godot-bridge.md` - copyable agent skill for external setups
+- `../skills/godot-bridge/SKILL.md` - copyable agent skill for external setups

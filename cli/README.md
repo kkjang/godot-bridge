@@ -46,11 +46,11 @@ See `../godot-plugin/README.md` for the plugin API surface the CLI will talk to.
 
 ## Agent Skill
 
-A copyable agent skill lives at `skills/godot-bridge.md`.
+A copyable agent skill lives at `../skills/godot-bridge/SKILL.md`.
 
 - It is written to be generic across agent harnesses that can execute shell commands.
 - It tells agents to use `godot-bridge spec` for capability discovery.
-- It scopes the CLI to plugin-backed editor control only.
+- It includes the broader Godot Bridge workflow and scopes the CLI to plugin-backed editor control only.
 - It includes a recommended workflow and example commands.
 
 ## Command Spec Source
@@ -60,8 +60,8 @@ The built-in `godot-bridge spec` command is the machine-readable source of truth
 - Use `godot-bridge spec` for JSON capability discovery.
 - Use `godot-bridge spec --markdown` to regenerate the command table below.
 - When the CLI command surface changes, update the built-in spec first and then refresh this README table from it.
-- Keep `skills/godot-bridge.md` aligned with the built-in spec and current command behavior.
-- Keep `skills/godot-bridge.md` harness-neutral. Put tool-specific wiring in separate adapter docs rather than the generic skill.
+- Keep `../skills/godot-bridge/SKILL.md` aligned with the built-in spec and current command behavior.
+- Keep `../skills/godot-bridge/SKILL.md` harness-neutral. Put tool-specific wiring in separate adapter docs rather than the generic skill.
 
 ## Transport flags
 

@@ -2,7 +2,7 @@
 
 CLI + Godot editor plugin for AI-assisted Godot development.
 
-Use `README.md` for human-facing setup and usage. Use this file for implementation guidance and workflow constraints.
+Use `README.md` for human-facing setup and usage. External bootstrap instructions for real game projects live there as well. Use this file for implementation guidance and workflow constraints.
 
 ## Goal
 
