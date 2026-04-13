@@ -22,10 +22,23 @@ jobs:
         with:
           go-version-file: cli/go.mod
           cache-dependency-path: cli/go.sum
+      - name: Run CLI unit tests
+        run: go test ./...
       - name: Build CLI
         run: go build -o /tmp/godot-bridge ./cmd/godot-bridge
       - name: Verify CLI version command
         run: test -x /tmp/godot-bridge
+
+  build-godot-plugin:
+    runs-on: ubuntu-latest
+    container: barichello/godot-ci:4.3
+    defaults:
+      run:
+        working-directory: godot-plugin
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run plugin unit tests
+        run: bash scripts/test.sh
 
   build-gdscript-lsp:
     runs-on: ubuntu-latest

@@ -53,16 +53,25 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
 | `gdscript-lsp/` | Shared GDScript LSP bridge plus tool-specific integrations |
 | `cli/` | `godot-bridge` CLI (Go) for plugin-backed editor control |
 
+## Validation
+
+- `cli/`: run `go test ./...` from `cli/`.
+- `gdscript-lsp/`: run `go test ./...` from `gdscript-lsp/`.
+- `godot-plugin/`: run `bash scripts/test.sh` from `godot-plugin/`.
+- On macOS, if Godot is not on `PATH`, use `GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" bash scripts/test.sh` from `godot-plugin/`.
+- When a change spans multiple components, run the relevant validation command for each touched component before finishing.
+
 ## Releases
 
-- `cli/` and `gdscript-lsp/` are versioned independently through `releases.yaml`.
+- `cli/`, `gdscript-lsp/`, and `godot-plugin/` are versioned independently through `releases.yaml`.
 - Use a small release PR to bump versions intentionally. Do not infer or bump release versions casually.
 - Release versions must be semver strings like `v0.1.0`.
 - The requested versions map to module tags:
   - `cli: vX.Y.Z` -> `cli/vX.Y.Z`
   - `gdscript-lsp: vX.Y.Z` -> `gdscript-lsp/vX.Y.Z`
+  - `godot-plugin: vX.Y.Z` -> `godot-plugin/vX.Y.Z`
 - Releases are created only from the default branch after the `CI` workflow succeeds.
-- The release workflow creates notes-only GitHub Releases with GitHub-generated changelog notes.
+- The release workflow creates GitHub Releases with GitHub-generated changelog notes. The Godot plugin release also uploads a zip artifact containing `addons/godot_bridge/`.
 - Generated notes are currently repo-wide, so they may include unrelated changes outside the released module.
 
 Keep project-wide guidance here and implementation-specific guidance in the nearest subdirectory `AGENTS.md`.

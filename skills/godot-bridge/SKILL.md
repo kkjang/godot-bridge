@@ -18,7 +18,7 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 1. For `.gd` files, prefer the configured GDScript LSP first when it is installed and available.
 2. Use normal LSP requests and follow-up inspection to surface diagnostics efficiently before trying heavier validation.
 3. Use filesystem tools directly for ordinary project file edits.
-4. Use the `godot-bridge` CLI for live editor operations such as scene open/save/run/stop, node inspection and mutation, script opening, screenshots, resource listing, and editor state inspection.
+4. Use the `godot-bridge` CLI for live editor operations such as scene open/save/run/stop, node inspection and mutation, signal wiring, scene instancing, project settings, animation authoring, script opening, screenshots, resource listing, debug streaming, and editor state inspection.
 5. Treat `godot-bridge spec` as the source of truth for CLI commands, flags, defaults, and plugin mappings.
 6. If LSP and direct inspection are not enough, escalate to heavier checks like running Godot in headless mode as smoke tests when appropriate.
 
@@ -61,7 +61,11 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 - `godot-bridge node get /root/Main/Player --detail full --json`
 - `godot-bridge node add Sprite2D --parent /root/Main --name Hero --props '{"position":[200,150]}'`
 - `godot-bridge node modify /root/Main/Hero --props '{"position":[240,180]}'`
+- `godot-bridge signal connect --source /root/Main/Button --signal pressed --target /root/Main/Game --method on_button_pressed`
+- `godot-bridge project get --prefix input/ --json`
+- `godot-bridge animation list /root/Main/AnimationPlayer --json`
 - `godot-bridge scene save`
+- `godot-bridge debug watch --events output,error`
 - `godot-bridge screenshot --json`
 - `godot-bridge resource list res:// --json`
 
@@ -70,3 +74,4 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 - `resource list` uses Godot's resource filesystem view, so paths should be `res://...`.
 - `scene run` without a path runs the main scene. With a path, it opens and runs that scene.
 - `screenshot` returns metadata in text mode and image payload data in JSON mode.
+- `debug watch` holds the single bridge connection open today, so run it in a separate terminal when you still need other bridge commands.

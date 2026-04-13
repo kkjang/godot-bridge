@@ -15,6 +15,18 @@ godot-bridge version
 
 For a pinned release, replace `@latest` with `@vX.Y.Z` after CLI release tags exist.
 
+## Test
+
+```bash
+go test ./...
+```
+
+Build the CLI after tests when you need a local binary:
+
+```bash
+go build -o /tmp/godot-bridge ./cmd/godot-bridge
+```
+
 ## User-facing commands
 
 ```text
@@ -29,6 +41,7 @@ godot-bridge node add TYPE --parent PATH
 godot-bridge node modify PATH --props '{}'
 godot-bridge node delete PATH
 godot-bridge node move PATH --new-parent PATH
+godot-bridge node instance SCENE_PATH [--parent PATH] [--name NAME]
 
 godot-bridge scene new PATH
 godot-bridge scene open PATH
@@ -37,6 +50,19 @@ godot-bridge scene run [PATH]
 godot-bridge scene stop
 
 godot-bridge script open PATH
+godot-bridge signal connect --source PATH --signal NAME --target PATH --method NAME
+godot-bridge signal disconnect --source PATH --signal NAME --target PATH --method NAME
+godot-bridge signal list PATH
+
+godot-bridge project get [--keys KEY,...] [--prefix PREFIX]
+godot-bridge project set --settings JSON
+
+godot-bridge animation list PATH
+godot-bridge animation get PATH --animation NAME
+godot-bridge animation new PATH --data JSON
+godot-bridge animation modify PATH --animation NAME --data JSON
+
+godot-bridge debug watch [--events output,error] [--json]
 godot-bridge screenshot
 
 godot-bridge resource list [DIR]
@@ -71,11 +97,13 @@ The built-in `godot-bridge spec` command is the machine-readable source of truth
 | `--timeout` | `5s` | Maximum time to connect and wait for a response. |
 | `--json` | `false` | Print structured JSON instead of compact text. |
 
+`debug watch` keeps the single bridge connection open while it streams events, so other CLI commands are blocked until it exits.
+
 ## Command spec
 
 | CLI command | Plugin command | Required args | Optional args | Defaults | Description |
 |---|---|---|---|---|---|
-| `godot-bridge version` | - | none | none | `text output` | Prints the CLI version. Release builds replace the default dev value. |
+| `godot-bridge version` | - | none | none | none | Prints the CLI version. Release builds replace the default dev value. |
 | `godot-bridge status` | `editor_state` | none | `--json` | `text output` | Checks that the bridge plugin is reachable and responsive. |
 | `godot-bridge spec [--markdown]` | - | none | `--markdown` | `json output` | Prints the machine-readable CLI spec. Use --markdown to render the README command table from the same source. |
 | `godot-bridge editor state` | `editor_state` | none | `--json` | `text output` | Shows current scene, open scenes, selected nodes, and active editor screen. |
@@ -85,11 +113,22 @@ The built-in `godot-bridge spec` command is the machine-readable source of truth
 | `godot-bridge node modify PATH --props JSON` | `node_modify` | `PATH`, `--props JSON` | `--json` | none | Updates properties on an existing node using JSON-encoded values. |
 | `godot-bridge node delete PATH` | `node_delete` | `PATH` | `--json` | none | Deletes the specified node. |
 | `godot-bridge node move PATH --new-parent PATH` | `node_move` | `PATH`, `--new-parent PATH` | `--json` | none | Reparents a node under a new parent. |
+| `godot-bridge node instance SCENE_PATH [--parent PATH] [--name NAME]` | `node_instance` | `SCENE_PATH` | `--parent PATH`, `--name NAME`, `--json` | `parent=""`, `name=scene root name` | Instances a PackedScene under the target parent or the current scene root. |
 | `godot-bridge scene new PATH [--root-type TYPE] [--root-name NAME]` | `scene_new` | `PATH` | `--root-type TYPE`, `--root-name NAME`, `--json` | `root-type=Node2D` | Creates a new scene file and opens it in the editor. |
 | `godot-bridge scene open PATH` | `scene_open` | `PATH` | `--json` | none | Opens an existing scene in the editor. |
 | `godot-bridge scene save` | `scene_save` | none | `--json` | none | Saves the currently open scene. |
 | `godot-bridge scene run [PATH]` | `scene_run` | none | `PATH`, `--json` | `PATH=""` | Runs the main scene, or opens and runs the specified scene. |
 | `godot-bridge scene stop` | `scene_stop` | none | `--json` | none | Stops the running scene. |
 | `godot-bridge script open PATH` | `script_open` | `PATH` | `--json` | none | Opens a script in the Godot script editor. |
+| `godot-bridge signal connect --source PATH --signal NAME --target PATH --method NAME` | `signal_connect` | `--source PATH`, `--signal NAME`, `--target PATH`, `--method NAME` | `--json` | none | Connects a signal from one node to a method on another node. |
+| `godot-bridge signal disconnect --source PATH --signal NAME --target PATH --method NAME` | `signal_disconnect` | `--source PATH`, `--signal NAME`, `--target PATH`, `--method NAME` | `--json` | none | Removes an existing signal connection. |
+| `godot-bridge signal list PATH` | `signal_connections` | `PATH` | `--json` | none | Lists outgoing signal connections from a node. |
+| `godot-bridge project get [--keys KEY,...] [--prefix PREFIX]` | `project_get` | none | `--keys KEY,...`, `--prefix PREFIX`, `--json` | none | Reads project settings by explicit keys, prefix, or both. |
+| `godot-bridge project set --settings JSON` | `project_set` | `--settings JSON` | `--json` | none | Updates project settings and saves the project configuration. |
+| `godot-bridge animation list PATH` | `animation_list` | `PATH` | `--json` | none | Lists animations on an AnimationPlayer. |
+| `godot-bridge animation get PATH --animation NAME` | `animation_get` | `PATH`, `--animation NAME` | `--json` | none | Shows track and keyframe data for one animation. |
+| `godot-bridge animation new PATH --data JSON` | `animation_new` | `PATH`, `--data JSON` | `--json` | none | Creates a new animation from JSON data on an AnimationPlayer. |
+| `godot-bridge animation modify PATH --animation NAME --data JSON` | `animation_modify` | `PATH`, `--animation NAME`, `--data JSON` | `--json` | none | Updates an existing animation using JSON track data. |
+| `godot-bridge debug watch [--events output,error] [--json]` | `debug_subscribe` | none | `--events output,error`, `--json` | `events=all` | Subscribes to streamed debug events and prints them until interrupted. |
 | `godot-bridge screenshot` | `screenshot` | none | `--json` | `text output` | Captures the current 2D editor viewport. |
 | `godot-bridge resource list [DIR]` | `resource_list` | none | `DIR`, `--json` | `DIR=res://` | Lists files and subdirectories from Godot's resource filesystem view. |
