@@ -27,11 +27,16 @@ var _next_connection_id := 1
 var _active_request_connection_id := -1
 var _script_debuggers: Array = []
 var _debug_backlog := []
+var _plugin: EditorPlugin
 
 
 # ---------------------------------------------------------------------------
 # Lifecycle
 # ---------------------------------------------------------------------------
+
+func init_plugin(plugin: EditorPlugin) -> void:
+	_plugin = plugin
+
 
 func start(port: int) -> void:
 	_port = port
@@ -597,7 +602,7 @@ func _cmd_node_add(id: String, args: Dictionary) -> void:
 	# Apply initial properties before adding to tree.
 	_apply_props(new_node, props)
 
-	var undo := EditorInterface.get_editor_undo_redo()
+	var undo := _plugin.get_undo_redo()
 	undo.create_action("Add node " + node_name)
 	undo.add_do_method(parent, "add_child", new_node, true)
 	undo.add_do_property(new_node, "owner", EditorInterface.get_edited_scene_root())
@@ -626,7 +631,7 @@ func _cmd_node_modify(id: String, args: Dictionary) -> void:
 		_send_error(id, "missing 'props' arg")
 		return
 
-	var undo := EditorInterface.get_editor_undo_redo()
+	var undo := _plugin.get_undo_redo()
 	undo.create_action("Modify node " + path)
 
 	for key in props:
@@ -658,7 +663,7 @@ func _cmd_node_delete(id: String, args: Dictionary) -> void:
 		_send_error(id, "Cannot delete root node")
 		return
 
-	var undo := EditorInterface.get_editor_undo_redo()
+	var undo := _plugin.get_undo_redo()
 	undo.create_action("Delete node " + path)
 	undo.add_do_method(parent, "remove_child", node)
 	undo.add_undo_method(parent, "add_child", node, true)
@@ -695,7 +700,7 @@ func _cmd_node_move(id: String, args: Dictionary) -> void:
 		_send_error(id, "Cannot move root node")
 		return
 
-	var undo := EditorInterface.get_editor_undo_redo()
+	var undo := _plugin.get_undo_redo()
 	undo.create_action("Move node " + path)
 	undo.add_do_method(node,       "reparent", new_parent, true)
 	undo.add_undo_method(node,     "reparent", old_parent, true)
@@ -734,7 +739,7 @@ func _cmd_signal_connect(id: String, args: Dictionary) -> void:
 		_send_error(id, "Signal is already connected")
 		return
 
-	var undo := EditorInterface.get_editor_undo_redo()
+	var undo := _plugin.get_undo_redo()
 	undo.create_action("Connect signal " + signal_name)
 	undo.add_do_method(source, "connect", signal_name, callable)
 	undo.add_undo_method(source, "disconnect", signal_name, callable)
@@ -765,7 +770,7 @@ func _cmd_signal_disconnect(id: String, args: Dictionary) -> void:
 		_send_error(id, "Signal is not connected")
 		return
 
-	var undo := EditorInterface.get_editor_undo_redo()
+	var undo := _plugin.get_undo_redo()
 	undo.create_action("Disconnect signal " + signal_name)
 	undo.add_do_method(source, "disconnect", signal_name, callable)
 	undo.add_undo_method(source, "connect", signal_name, callable)
@@ -831,7 +836,7 @@ func _cmd_node_instance(id: String, args: Dictionary) -> void:
 		instance.name = node_name
 
 	var owner := EditorInterface.get_edited_scene_root()
-	var undo := EditorInterface.get_editor_undo_redo()
+	var undo := _plugin.get_undo_redo()
 	undo.create_action("Instance scene " + scene_path)
 	undo.add_do_method(parent, "add_child", instance, true)
 	undo.add_do_property(instance, "owner", owner)
@@ -925,7 +930,7 @@ func _cmd_animation_new(id: String, args: Dictionary) -> void:
 		return
 
 	var animation := BridgeAnimationCodec.build_animation(args, Callable(self, "_animation_value_from_json").bind(player))
-	var undo := EditorInterface.get_editor_undo_redo()
+	var undo := _plugin.get_undo_redo()
 	undo.create_action("Create animation " + animation_name)
 	undo.add_do_method(library, "add_animation", animation_name, animation)
 	undo.add_undo_method(library, "remove_animation", animation_name)
@@ -950,7 +955,7 @@ func _cmd_animation_modify(id: String, args: Dictionary) -> void:
 	var existing := library.get_animation(animation_name)
 	var updated := BridgeAnimationCodec.apply_animation_changes(existing, args, Callable(self, "_animation_value_from_json").bind(player))
 
-	var undo := EditorInterface.get_editor_undo_redo()
+	var undo := _plugin.get_undo_redo()
 	undo.create_action("Modify animation " + animation_name)
 	undo.add_do_method(library, "remove_animation", animation_name)
 	undo.add_do_method(library, "add_animation", animation_name, updated)

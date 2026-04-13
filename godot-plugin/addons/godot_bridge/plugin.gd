@@ -9,6 +9,7 @@ var _status_label: Label
 
 func _enter_tree() -> void:
 	_server = BridgeServer.new()
+	_server.init_plugin(self)
 	_server.status_changed.connect(_on_status_changed)
 	add_child(_server)
 
