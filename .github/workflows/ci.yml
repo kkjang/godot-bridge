@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-cli:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     defaults:
       run:
         working-directory: cli
@@ -21,15 +21,12 @@ jobs:
       - name: Run CLI unit tests
         run: go test ./...
       - name: Build CLI
-        env:
-          GOOS: linux
-          GOARCH: arm64
         run: go build -o /tmp/godot-bridge ./cmd/godot-bridge
       - name: Verify CLI version command
         run: test -x /tmp/godot-bridge
 
   build-godot-plugin:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     container: barichello/godot-ci:4.3
     defaults:
       run:
@@ -40,7 +37,7 @@ jobs:
         run: bash scripts/test.sh
 
   build-gdscript-lsp:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     defaults:
       run:
         working-directory: gdscript-lsp
@@ -51,9 +48,6 @@ jobs:
           go-version-file: gdscript-lsp/go.mod
           cache-dependency-path: gdscript-lsp/go.mod
       - name: Build proxy
-        env:
-          GOOS: linux
-          GOARCH: arm64
         run: go build -o /tmp/gdscript-lsp-proxy ./cmd/gdscript-lsp-proxy
       - name: Verify proxy version command
         run: test -x /tmp/gdscript-lsp-proxy
