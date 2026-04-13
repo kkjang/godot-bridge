@@ -177,14 +177,6 @@ Release-note labels:
 
 Shared PRs may carry more than one component label and can appear in more than one component release.
 
-For release PR authoring, the repository also includes `skills/release-pr/SKILL.md`, which drafts strict path-only changelog sections from:
-
-- `cli/**`
-- `gdscript-lsp/**`
-- `godot-plugin/**`
-
-The v1 changelog draft intentionally ignores shared root files and workflow changes.
-
 Recommended repository settings:
 
 - Protect the default branch and require the `CI` workflow to pass before merging.
