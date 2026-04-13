@@ -1,0 +1,5 @@
+changelog:
+  categories:
+    - title: CLI Changes
+      labels:
+        - component: cli

@@ -20,17 +20,26 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          fetch-tags: true
 
-      - name: Read release manifest
+      - name: Read release manifest and previous tags
         id: manifest
         run: |
           set -eu
+          git fetch --force --tags origin
           cli_version=$(grep '^cli:' releases.yaml | cut -d: -f2 | xargs)
           gdscript_lsp_version=$(grep '^gdscript-lsp:' releases.yaml | cut -d: -f2 | xargs)
           plugin_version=$(grep '^godot-plugin:' releases.yaml | cut -d: -f2 | xargs)
+          previous_cli_tag=$(git tag --list 'cli/v*' --sort=-version:refname | grep -vx "cli/${cli_version}" | sed -n '1p' || true)
+          previous_gdscript_lsp_tag=$(git tag --list 'gdscript-lsp/v*' --sort=-version:refname | grep -vx "gdscript-lsp/${gdscript_lsp_version}" | sed -n '1p' || true)
+          previous_plugin_tag=$(git tag --list 'godot-plugin/v*' --sort=-version:refname | grep -vx "godot-plugin/${plugin_version}" | sed -n '1p' || true)
           echo "cli_version=$cli_version" >> "$GITHUB_OUTPUT"
           echo "gdscript_lsp_version=$gdscript_lsp_version" >> "$GITHUB_OUTPUT"
           echo "plugin_version=$plugin_version" >> "$GITHUB_OUTPUT"
+          echo "previous_cli_tag=$previous_cli_tag" >> "$GITHUB_OUTPUT"
+          echo "previous_gdscript_lsp_tag=$previous_gdscript_lsp_tag" >> "$GITHUB_OUTPUT"
+          echo "previous_plugin_tag=$previous_plugin_tag" >> "$GITHUB_OUTPUT"
 
       - name: Create CLI release when needed
         uses: actions/github-script@v7
@@ -38,11 +47,15 @@ jobs:
           VERSION: ${{ steps.manifest.outputs.cli_version }}
           TAG_NAME: cli/${{ steps.manifest.outputs.cli_version }}
           TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+          PREVIOUS_TAG: ${{ steps.manifest.outputs.previous_cli_tag }}
+          CONFIG_PATH: .github/release-cli.yml
         with:
           script: |
             const tag = process.env.TAG_NAME
             const version = process.env.VERSION
             const target = process.env.TARGET_SHA
+            const previousTag = process.env.PREVIOUS_TAG || undefined
+            const configPath = process.env.CONFIG_PATH
             if (!/^v\d+\.\d+\.\d+$/.test(version)) {
               core.setFailed(`cli version must be semver like v1.2.3, got ${version}`)
               return
@@ -58,13 +71,21 @@ jobs:
             } catch (error) {
               if (error.status !== 404) throw error
             }
+            const notes = await github.rest.repos.generateReleaseNotes({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              target_commitish: target,
+              previous_tag_name: previousTag,
+              configuration_file_path: configPath,
+            })
             await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: tag,
               target_commitish: target,
               name: `CLI ${version}`,
-              generate_release_notes: true,
+              body: notes.data.body,
             })
             core.info(`Created release ${tag}`)
 
@@ -75,11 +96,15 @@ jobs:
           VERSION: ${{ steps.manifest.outputs.plugin_version }}
           TAG_NAME: godot-plugin/${{ steps.manifest.outputs.plugin_version }}
           TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+          PREVIOUS_TAG: ${{ steps.manifest.outputs.previous_plugin_tag }}
+          CONFIG_PATH: .github/release-godot-plugin.yml
         with:
           script: |
             const tag = process.env.TAG_NAME
             const version = process.env.VERSION
             const target = process.env.TARGET_SHA
+            const previousTag = process.env.PREVIOUS_TAG || undefined
+            const configPath = process.env.CONFIG_PATH
             if (!/^v\d+\.\d+\.\d+$/.test(version)) {
               core.setFailed(`godot-plugin version must be semver like v1.2.3, got ${version}`)
               return
@@ -91,23 +116,37 @@ jobs:
                 repo: context.repo.repo,
                 tag,
               })
-              core.info(`Release ${tag} already exists; reusing it for asset upload`)
+              core.info(`Release ${tag} already exists; skipping plugin publish flow`)
+              core.setOutput('release_id', String(release.data.id))
+              core.setOutput('created', 'false')
+              return
             } catch (error) {
               if (error.status !== 404) throw error
+              const notes = await github.rest.repos.generateReleaseNotes({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                target_commitish: target,
+                previous_tag_name: previousTag,
+                configuration_file_path: configPath,
+              })
               release = await github.rest.repos.createRelease({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 tag_name: tag,
                 target_commitish: target,
                 name: `Godot Plugin ${version}`,
-                generate_release_notes: true,
+                body: notes.data.body,
+                draft: true,
               })
-              core.info(`Created release ${tag}`)
+              core.info(`Created draft release ${tag}`)
             }
             core.setOutput('release_id', String(release.data.id))
+            core.setOutput('created', 'true')
 
       - name: Package Godot plugin
         id: plugin_package
+        if: steps.plugin_release.outputs.created == 'true'
         working-directory: godot-plugin
         run: |
           set -eu
@@ -115,6 +154,7 @@ jobs:
           echo "archive_path=$archive_path" >> "$GITHUB_OUTPUT"
 
       - name: Upload Godot plugin artifact
+        if: steps.plugin_release.outputs.created == 'true'
         uses: actions/github-script@v7
         env:
           RELEASE_ID: ${{ steps.plugin_release.outputs.release_id }}
@@ -149,17 +189,36 @@ jobs:
             })
             core.info(`Uploaded ${assetName}`)
 
+      - name: Publish Godot plugin release
+        if: steps.plugin_release.outputs.created == 'true'
+        uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ steps.plugin_release.outputs.release_id }}
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: Number(process.env.RELEASE_ID),
+              draft: false,
+            })
+            core.info('Published Godot plugin release')
+
       - name: Create GDScript LSP release when needed
         uses: actions/github-script@v7
         env:
           VERSION: ${{ steps.manifest.outputs.gdscript_lsp_version }}
           TAG_NAME: gdscript-lsp/${{ steps.manifest.outputs.gdscript_lsp_version }}
           TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+          PREVIOUS_TAG: ${{ steps.manifest.outputs.previous_gdscript_lsp_tag }}
+          CONFIG_PATH: .github/release-gdscript-lsp.yml
         with:
           script: |
             const tag = process.env.TAG_NAME
             const version = process.env.VERSION
             const target = process.env.TARGET_SHA
+            const previousTag = process.env.PREVIOUS_TAG || undefined
+            const configPath = process.env.CONFIG_PATH
             if (!/^v\d+\.\d+\.\d+$/.test(version)) {
               core.setFailed(`gdscript-lsp version must be semver like v1.2.3, got ${version}`)
               return
@@ -175,12 +234,20 @@ jobs:
             } catch (error) {
               if (error.status !== 404) throw error
             }
+            const notes = await github.rest.repos.generateReleaseNotes({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              target_commitish: target,
+              previous_tag_name: previousTag,
+              configuration_file_path: configPath,
+            })
             await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: tag,
               target_commitish: target,
               name: `GDScript LSP ${version}`,
-              generate_release_notes: true,
+              body: notes.data.body,
             })
             core.info(`Created release ${tag}`)
