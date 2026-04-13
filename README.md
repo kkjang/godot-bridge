@@ -55,6 +55,8 @@ Start with the included Claude and OpenCode integrations.
 
 The reusable Godot Bridge skill lives in `skills/godot-bridge/SKILL.md`. Copy or adapt it into the target game project's harness-specific skill location however your agent expects skills to be loaded.
 
+For safer live-editor workflows, process cleanup, and manual validation guidance, see `docs/godot-agent-workflow.md`.
+
 **Claude Code**
 
 Install the plugin from this repository checkout:
@@ -89,7 +91,7 @@ Then enable **Godot Bridge** in **Project -> Project Settings -> Plugins**.
 Wait until the bottom panel shows one of:
 
 - `Bridge: Listening :6505`
-- `Bridge: Connected`
+- `Bridge: Connected (N)`
 - `Bridge: Error (port 6505)`
 
 If an agent is driving setup, it should pause here and wait for the user to confirm the plugin has been enabled.
