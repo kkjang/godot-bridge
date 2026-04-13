@@ -60,6 +60,7 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
 - `godot-plugin/`: run `bash scripts/test.sh` from `godot-plugin/`.
 - On macOS, if Godot is not on `PATH`, use `GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" bash scripts/test.sh` from `godot-plugin/`.
 - When a change spans multiple components, run the relevant validation command for each touched component before finishing.
+- CI now path-filters component jobs, so changes under `cli/**`, `gdscript-lsp/**`, and `godot-plugin/**` only trigger that component's build/test job.
 
 ## Releases
 
@@ -78,10 +79,5 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
   - `component: godot-plugin`
 - Shared PRs may carry multiple component labels and appear in multiple component releases.
 - The Godot plugin release also uploads a zip artifact containing `addons/godot_bridge/`.
-- For release PR drafting, use `skills/release-pr/SKILL.md` and keep changelog sections strict path-only in v1:
-  - `cli/**`
-  - `gdscript-lsp/**`
-  - `godot-plugin/**`
-- Do not include shared-file changes in those drafted changelog sections unless the user explicitly asks for them.
 
 Keep project-wide guidance here and implementation-specific guidance in the nearest subdirectory `AGENTS.md`.
