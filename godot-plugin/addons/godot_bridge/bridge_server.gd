@@ -1037,22 +1037,63 @@ func _hook_script_debuggers() -> void:
 			continue
 		live_debuggers.append(debugger)
 		var output_callable := Callable(self, "_on_script_debugger_output")
+		var debug_data_callable := Callable(self, "_on_script_debugger_debug_data")
 		if not debugger.output.is_connected(output_callable):
 			debugger.output.connect(output_callable)
+		if not debugger.debug_data.is_connected(debug_data_callable):
+			debugger.debug_data.connect(debug_data_callable)
 	_script_debuggers = live_debuggers
 
 
 func _on_script_debugger_output(message: String, level: int) -> void:
-	var payload := {
+	push_debug_event("output", _output_event_payload(message, level))
+
+
+func _on_script_debugger_debug_data(message: String, data: Array) -> void:
+	if message != "error":
+		return
+	push_debug_event("error", _error_event_payload(data))
+
+
+static func _output_event_payload(message: String, _level: int) -> Dictionary:
+	return {
 		"message": message,
 		"timestamp": Time.get_ticks_msec(),
 	}
-	if level == 1 or level == 3:
-		payload["script"] = ""
-		payload["line"] = 0
-		push_debug_event("error", payload)
-		return
-	push_debug_event("output", payload)
+
+
+static func _error_event_payload(data: Array) -> Dictionary:
+	var message := ""
+	if data.size() > 8 and not str(data[8]).is_empty():
+		message = str(data[8])
+	elif data.size() > 7:
+		message = str(data[7])
+
+	var script := ""
+	if data.size() > 4:
+		script = str(data[4])
+
+	var line := 0
+	if data.size() > 6:
+		line = int(data[6])
+
+	if (script.is_empty() or line <= 0) and data.size() > 10:
+		var stack_size := int(data[10])
+		var frame_index := 11
+		if stack_size >= 3 and data.size() >= frame_index + 3:
+			if script.is_empty():
+				script = str(data[frame_index])
+			if line <= 0:
+				line = int(data[frame_index + 2])
+
+	return {
+		"message": message,
+		"script": script,
+		"line": line,
+		"column": 0,
+		"severity": "warning" if data.size() > 9 and bool(data[9]) else "error",
+		"timestamp": Time.get_ticks_msec(),
+	}
 
 
 func _record_debug_event(event_name: String, data: Dictionary) -> void:
