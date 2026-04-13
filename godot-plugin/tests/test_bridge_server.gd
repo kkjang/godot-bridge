@@ -24,6 +24,7 @@ func _test_connection_ids_for_event_are_per_connection(failures: Array[String]) 
 
 	_assert_eq(failures, server._connection_ids_for_event("output"), [1], "output events should route only to output subscribers")
 	_assert_eq(failures, server._connection_ids_for_event("error"), [2], "error events should route only to error subscribers")
+	server.free()
 
 
 func _test_build_debug_event_payloads_filters_backlog(failures: Array[String]) -> void:
@@ -40,6 +41,7 @@ func _test_build_debug_event_payloads_filters_backlog(failures: Array[String]) -
 
 	var all_payloads := server._build_debug_event_payloads([])
 	_assert_eq(failures, all_payloads.size(), 2, "empty subscription replay should include all backlog events")
+	server.free()
 
 
 func _assert_eq(failures: Array[String], actual, expected, message: String) -> void:

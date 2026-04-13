@@ -372,12 +372,29 @@ func printDebugEvent(cfg config, msg eventMessage) error {
 	message := strings.TrimSpace(fmt.Sprint(payload["message"]))
 	switch msg.Event {
 	case "error":
-		location := strings.TrimSpace(fmt.Sprint(payload["script"]))
-		line := ""
-		if rawLine, ok := payload["line"]; ok {
-			line = fmt.Sprintf(":%v", rawLine)
+		severity := strings.TrimSpace(fmt.Sprint(payload["severity"]))
+		if severity == "" {
+			severity = "error"
 		}
-		_, err := fmt.Fprintf(cfg.stdout, "[error] %s%s %s\n", location, line, message)
+		location := strings.TrimSpace(fmt.Sprint(payload["script"]))
+		position := ""
+		if rawLine, ok := payload["line"]; ok {
+			line := fmt.Sprint(rawLine)
+			if line != "" && line != "0" {
+				position = ":" + line
+				if rawColumn, ok := payload["column"]; ok {
+					column := fmt.Sprint(rawColumn)
+					if column != "" && column != "0" {
+						position += ":" + column
+					}
+				}
+			}
+		}
+		if location != "" {
+			_, err := fmt.Fprintf(cfg.stdout, "[%s] %s%s %s\n", severity, location, position, message)
+			return err
+		}
+		_, err := fmt.Fprintf(cfg.stdout, "[%s] %s\n", severity, message)
 		return err
 	default:
 		_, err := fmt.Fprintf(cfg.stdout, "[%s] %s\n", msg.Event, message)
