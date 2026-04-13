@@ -1,0 +1,5 @@
+changelog:
+  categories:
+    - title: Godot Plugin Changes
+      labels:
+        - component: godot-plugin

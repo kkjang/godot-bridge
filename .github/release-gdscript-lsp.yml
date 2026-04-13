@@ -1,0 +1,5 @@
+changelog:
+  categories:
+    - title: GDScript LSP Changes
+      labels:
+        - component: gdscript-lsp

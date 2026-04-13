@@ -166,7 +166,15 @@ Examples:
 - `cli: v0.2.0` produces tag `cli/v0.2.0`
 - `gdscript-lsp: v0.1.1` produces tag `gdscript-lsp/v0.1.1`
 
-GitHub-generated release notes are used by the release workflow for now. They are repo-wide notes, not path-scoped notes.
+The release workflow now generates component-scoped GitHub release notes from labeled PRs plus the previous same-component tag.
+
+Release-note labels:
+
+- `component: cli`
+- `component: gdscript-lsp`
+- `component: godot-plugin`
+
+Shared PRs may carry more than one component label and can appear in more than one component release.
 
 For release PR authoring, the repository also includes `skills/release-pr/SKILL.md`, which drafts strict path-only changelog sections from:
 
