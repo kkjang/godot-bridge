@@ -10,7 +10,14 @@ This repository is meant to be used from actual game project repositories. The G
 
 For coding-agent implementation guidance inside this repo, see `AGENTS.md`.
 
-## Bootstrap from a game project
+This README has two audiences:
+
+- If you want to install Godot Bridge into your own game project, start at `Use In A Game Project`.
+- If you are developing or releasing this repository itself, skip to `Develop The Bridge`.
+
+## Use In A Game Project
+
+### Bootstrap from a game project
 
 These are the four setup steps an agent or user should follow when enabling Godot Bridge in a real game repository.
 
@@ -89,7 +96,7 @@ If an agent is driving setup, it should pause here and wait for the user to conf
 
 Agents may optionally enable the plugin by editing `project.godot`, but that is less reliable than the UI flow and usually requires reopening the Godot editor before the plugin loads.
 
-## Verify the setup
+### Verify the setup
 
 With Godot open on the game project and the plugin enabled:
 
@@ -100,7 +107,9 @@ godot-bridge editor state
 
 If the plugin is reachable, `godot-bridge status` prints `connected`.
 
-## Components
+## Develop The Bridge
+
+### Components
 
 | Directory | What it is |
 |-----------|------------|
@@ -108,7 +117,7 @@ If the plugin is reachable, `godot-bridge status` prints `connected`.
 | [`gdscript-lsp/`](gdscript-lsp/README.md) | Shared GDScript LSP bridge plus tool-specific integrations |
 | [`cli/`](cli/README.md) | `godot-bridge` CLI (Go) for editor control through the plugin |
 
-## Test All Components
+### Test all components
 
 Run these from the repository root:
 
@@ -129,7 +138,9 @@ Notes:
 (cd godot-plugin && GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" bash scripts/test.sh)
 ```
 
-## Release model
+## Release The Bridge
+
+### Release model
 
 `cli/` and `gdscript-lsp/` are separate Go modules and should be versioned independently.
 
@@ -138,7 +149,7 @@ Notes:
 - `go install ...@latest` works for bootstrap
 - Pin `@vX.Y.Z` when you want a specific released version
 
-## Release process
+### Release process
 
 Releases are driven by `releases.yaml` on the default branch.
 
@@ -155,7 +166,15 @@ Examples:
 - `cli: v0.2.0` produces tag `cli/v0.2.0`
 - `gdscript-lsp: v0.1.1` produces tag `gdscript-lsp/v0.1.1`
 
-GitHub-generated release notes are used for now. They are repo-wide notes, not path-scoped notes.
+GitHub-generated release notes are used by the release workflow for now. They are repo-wide notes, not path-scoped notes.
+
+For release PR authoring, the repository also includes `skills/release-pr/SKILL.md`, which drafts strict path-only changelog sections from:
+
+- `cli/**`
+- `gdscript-lsp/**`
+- `godot-plugin/**`
+
+The v1 changelog draft intentionally ignores shared root files and workflow changes.
 
 Recommended repository settings:
 

@@ -73,5 +73,10 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
 - Releases are created only from the default branch after the `CI` workflow succeeds.
 - The release workflow creates GitHub Releases with GitHub-generated changelog notes. The Godot plugin release also uploads a zip artifact containing `addons/godot_bridge/`.
 - Generated notes are currently repo-wide, so they may include unrelated changes outside the released module.
+- For release PR drafting, use `skills/release-pr/SKILL.md` and keep changelog sections strict path-only in v1:
+  - `cli/**`
+  - `gdscript-lsp/**`
+  - `godot-plugin/**`
+- Do not include shared-file changes in those drafted changelog sections unless the user explicitly asks for them.
 
 Keep project-wide guidance here and implementation-specific guidance in the nearest subdirectory `AGENTS.md`.
