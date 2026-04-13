@@ -64,6 +64,7 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
 
 ## Releases
 
+- Before creating a new branch for release work or implementation work, fetch `origin`, update local `main` from `origin/main`, and branch from that updated `main` unless the user explicitly asks to base work elsewhere.
 - `cli/`, `gdscript-lsp/`, and `godot-plugin/` are versioned independently through `releases.yaml`.
 - Use a small release PR to bump versions intentionally. Do not infer or bump release versions casually.
 - When cutting a `godot-plugin` release PR, also update `godot-plugin/addons/godot_bridge/plugin.cfg` so `version` matches the release number without the leading `v`.
