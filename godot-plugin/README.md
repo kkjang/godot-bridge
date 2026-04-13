@@ -15,7 +15,7 @@ For implementation guidance and protocol constraints while editing this plugin, 
 2. Enable **Godot Bridge** in **Project -> Project Settings -> Plugins**.
 3. Wait until the bottom panel shows one of these states:
    - `Bridge: Listening :6505`
-   - `Bridge: Connected`
+   - `Bridge: Connected (N)`
    - `Bridge: Error (port 6505)`
 4. If an agent is driving setup, pause here and wait for the user to confirm the plugin has been enabled.
 
@@ -36,8 +36,10 @@ The default port is `6505`. To change it, open **Project -> Project Settings -> 
 
 - Endpoint: `ws://localhost:6505`
 - Transport: JSON over WebSocket text frames
-- One client connection at a time
-- `debug_subscribe` style streaming holds that single connection open today
+- Multiple clients are supported
+- Request and response messages stay scoped to the originating connection
+- `debug_subscribe` and `debug_unsubscribe` manage per-connection event subscriptions
+- Command execution remains serialized on the editor side
 
 Example request:
 
@@ -76,9 +78,11 @@ Example error response:
 - Release packaging uses `bash scripts/package.sh vX.Y.Z`, which produces a zip containing `addons/godot_bridge/`.
 - On macOS, if Godot is not on `PATH`, run `GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" bash scripts/test.sh`.
 
-## Current Limitation
+## Runtime Notes
 
-`debug_subscribe` streams events over the same WebSocket used for normal commands. Because the bridge only accepts one client today, a long-running debug stream blocks other CLI commands until it exits. The server code includes a TODO to move this to per-stream subscriptions when the transport supports multiple streams.
+- `debug watch` can stream output while other CLI commands run from separate clients.
+- `scene run` launches a game process under the editor. For manual validation, prefer short-lived test scenes and make sure runs are stopped cleanly before relaunching more sessions.
+- If you update plugin files in a game project, restart the editor instead of replacing scripts under a live session.
 
 ## Troubleshooting
 

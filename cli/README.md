@@ -97,7 +97,7 @@ The built-in `godot-bridge spec` command is the machine-readable source of truth
 | `--timeout` | `5s` | Maximum time to connect and wait for a response. |
 | `--json` | `false` | Print structured JSON instead of compact text. |
 
-`debug watch` keeps the single bridge connection open while it streams events, so other CLI commands are blocked until it exits.
+The bridge supports multiple websocket clients, so `debug watch` can stay connected while other CLI commands run concurrently.
 
 ## Command spec
 

@@ -934,7 +934,7 @@ func buildSpec() cliSpec {
 		Notes: []string{
 			"This CLI only covers plugin-backed editor commands.",
 			"The README command spec table should be regenerated from `godot-bridge spec --markdown` whenever the command surface changes.",
-			"`debug watch` holds the single bridge connection open today, so other CLI commands are blocked until it exits.",
+			"The bridge supports multiple websocket clients, so `debug watch` can stream while other CLI commands run concurrently.",
 		},
 	}
 }
