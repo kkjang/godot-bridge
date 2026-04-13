@@ -1,7 +1,7 @@
 name: PR Component Labels
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize
@@ -11,7 +11,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   validate-component-labels:
@@ -19,6 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - id: filter
@@ -32,6 +33,40 @@ jobs:
             gdscript-lsp:
               - 'gdscript-lsp/**'
 
+      - name: Apply missing path-based component labels
+        uses: actions/github-script@v7
+        env:
+          CLI_CHANGED: ${{ steps.filter.outputs.cli }}
+          GODOT_PLUGIN_CHANGED: ${{ steps.filter.outputs.godot-plugin }}
+          GDSCRIPT_LSP_CHANGED: ${{ steps.filter.outputs.gdscript-lsp }}
+        with:
+          script: |
+            const expected = []
+            if (process.env.CLI_CHANGED === 'true') expected.push('component: cli')
+            if (process.env.GODOT_PLUGIN_CHANGED === 'true') expected.push('component: godot-plugin')
+            if (process.env.GDSCRIPT_LSP_CHANGED === 'true') expected.push('component: gdscript-lsp')
+
+            if (expected.length === 0) {
+              core.info('No component labels required for this PR')
+              return
+            }
+
+            const current = new Set((context.payload.pull_request.labels || []).map((label) => label.name))
+            const missing = expected.filter((label) => !current.has(label))
+
+            if (missing.length === 0) {
+              core.info('All required component labels already present')
+              return
+            }
+
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: missing,
+            })
+            core.info(`Applied missing labels: ${missing.join(', ')}`)
+
       - name: Validate required component labels
         uses: actions/github-script@v7
         env:
@@ -40,18 +75,18 @@ jobs:
           GDSCRIPT_LSP_CHANGED: ${{ steps.filter.outputs.gdscript-lsp }}
         with:
           script: |
-            const labels = new Set((context.payload.pull_request.labels || []).map((label) => label.name))
-            const missing = []
+            const expected = []
+            if (process.env.CLI_CHANGED === 'true') expected.push('component: cli')
+            if (process.env.GODOT_PLUGIN_CHANGED === 'true') expected.push('component: godot-plugin')
+            if (process.env.GDSCRIPT_LSP_CHANGED === 'true') expected.push('component: gdscript-lsp')
 
-            if (process.env.CLI_CHANGED === 'true' && !labels.has('component: cli')) {
-              missing.push('component: cli')
-            }
-            if (process.env.GODOT_PLUGIN_CHANGED === 'true' && !labels.has('component: godot-plugin')) {
-              missing.push('component: godot-plugin')
-            }
-            if (process.env.GDSCRIPT_LSP_CHANGED === 'true' && !labels.has('component: gdscript-lsp')) {
-              missing.push('component: gdscript-lsp')
-            }
+            const issue = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            })
+            const labels = new Set((issue.data.labels || []).map((label) => typeof label === 'string' ? label : label.name))
+            const missing = expected.filter((label) => !labels.has(label))
 
             if (missing.length > 0) {
               core.setFailed(`Missing required component labels: ${missing.join(', ')}`)

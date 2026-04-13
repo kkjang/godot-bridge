@@ -171,13 +171,19 @@ Examples:
 
 The release workflow now generates component-scoped GitHub release notes from labeled PRs plus the previous same-component tag.
 
-Release-note labels:
+For PRs that touch component paths, CI now auto-applies and validates these release-note labels:
 
 - `component: cli`
 - `component: gdscript-lsp`
 - `component: godot-plugin`
 
-Shared PRs may carry more than one component label and can appear in more than one component release.
+using path matches on:
+
+- `cli/**`
+- `gdscript-lsp/**`
+- `godot-plugin/**`
+
+Shared PRs may carry more than one component label and appear in more than one component release.
 
 Recommended repository settings:
 

@@ -74,10 +74,14 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
   - `godot-plugin: vX.Y.Z` -> `godot-plugin/vX.Y.Z`
 - Releases are created only from the default branch after the `CI` workflow succeeds.
 - The release workflow creates GitHub Releases with component-scoped generated notes based on the previous same-component tag plus PR labels.
-- Label release-relevant PRs with one or more of:
+- CI now auto-applies and validates path-based component labels for PRs touching:
   - `component: cli`
   - `component: gdscript-lsp`
   - `component: godot-plugin`
+- for changes under:
+  - `cli/**`
+  - `gdscript-lsp/**`
+  - `godot-plugin/**`
 - Shared PRs may carry multiple component labels and appear in multiple component releases.
 - The Godot plugin release also uploads a zip artifact containing `addons/godot_bridge/`.
 
