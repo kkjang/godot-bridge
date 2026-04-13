@@ -91,7 +91,10 @@ jobs:
                 repo: context.repo.repo,
                 tag,
               })
-              core.info(`Release ${tag} already exists; reusing it for asset upload`)
+              core.info(`Release ${tag} already exists; skipping plugin publish flow`)
+              core.setOutput('release_id', String(release.data.id))
+              core.setOutput('created', 'false')
+              return
             } catch (error) {
               if (error.status !== 404) throw error
               release = await github.rest.repos.createRelease({
@@ -100,14 +103,17 @@ jobs:
                 tag_name: tag,
                 target_commitish: target,
                 name: `Godot Plugin ${version}`,
+                draft: true,
                 generate_release_notes: true,
               })
-              core.info(`Created release ${tag}`)
+              core.info(`Created draft release ${tag}`)
             }
             core.setOutput('release_id', String(release.data.id))
+            core.setOutput('created', 'true')
 
       - name: Package Godot plugin
         id: plugin_package
+        if: steps.plugin_release.outputs.created == 'true'
         working-directory: godot-plugin
         run: |
           set -eu
@@ -115,6 +121,7 @@ jobs:
           echo "archive_path=$archive_path" >> "$GITHUB_OUTPUT"
 
       - name: Upload Godot plugin artifact
+        if: steps.plugin_release.outputs.created == 'true'
         uses: actions/github-script@v7
         env:
           RELEASE_ID: ${{ steps.plugin_release.outputs.release_id }}
@@ -148,6 +155,21 @@ jobs:
               data: fs.readFileSync(archivePath),
             })
             core.info(`Uploaded ${assetName}`)
+
+      - name: Publish Godot plugin release
+        if: steps.plugin_release.outputs.created == 'true'
+        uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ steps.plugin_release.outputs.release_id }}
+        with:
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: Number(process.env.RELEASE_ID),
+              draft: false,
+            })
+            core.info('Published Godot plugin release')
 
       - name: Create GDScript LSP release when needed
         uses: actions/github-script@v7
