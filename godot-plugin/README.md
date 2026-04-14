@@ -69,7 +69,7 @@ Example error response:
 - Scene actions: `scene_new`, `scene_open`, `scene_save`, `scene_run`, `scene_stop`
 - Debug streaming: `debug_subscribe`, `debug_unsubscribe`
 - Script and resource access: `script_open`, `resource_list`, `resource_reimport`
-- Capture: `screenshot`
+- Capture: `screenshot`, `game_screenshot`
 
 ## Build And Test
 
@@ -82,6 +82,8 @@ Example error response:
 
 - `debug watch` can stream output while other CLI commands run from separate clients.
 - `scene run` launches a game process under the editor. For manual validation, prefer short-lived test scenes and make sure runs are stopped cleanly before relaunching more sessions.
+- `game_screenshot` uses a temporary autoload plus the editor debugger bridge to capture the running game framebuffer.
+- `game_screenshot` works with both a visible editor and a headless editor session; the older editor-viewport `screenshot` command is still the live-editor-only capture path.
 - If you update plugin files in a game project, restart the editor instead of replacing scripts under a live session.
 
 ## Troubleshooting

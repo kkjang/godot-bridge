@@ -66,6 +66,7 @@ That difference matters for reliability and user experience, but not for the CLI
 | Validate, smoke test, or run CI-style checks | Preferred | Allowed | Headless runs are usually more reliable and easier to repeat. |
 | Inspect current editor state, open scenes, or selection | Not applicable | Preferred | Requires a live plugin session. |
 | Capture editor viewport screenshots | Not applicable | Preferred | Useful only when the user wants live inspection. |
+| Capture running-game screenshots | Preferred | Allowed | Works through the debugger bridge after `scene run`, including headless editor automation. |
 | Small scene edits the user wants to watch | Allowed | Preferred | Use Interactive mode when visibility matters more than strict determinism. |
 | Modify `project.godot` | Allowed | Warning-worthy | The editor may prompt for reload or continue showing stale settings until reopened. |
 | Modify imported resources already open in the editor | Allowed | Warning-worthy | Disk changes remain authoritative, but the editor may not immediately reflect them. |

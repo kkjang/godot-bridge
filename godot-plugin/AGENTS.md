@@ -57,6 +57,7 @@ Use `README.md` for installation and operator-facing usage. Use this file when c
 - `script_open`
 - `resource_reimport`
 - `resource_list`
+- `game_screenshot`
 - `screenshot`
 
 ## Data Conventions

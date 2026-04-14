@@ -2,14 +2,25 @@
 extends EditorPlugin
 
 const BridgeServer = preload("res://addons/godot_bridge/bridge_server.gd")
+const BridgeDebuggerPlugin = preload("res://addons/godot_bridge/bridge_debugger_plugin.gd")
+
+const RUNTIME_AUTOLOAD_NAME := "GodotBridgeRuntime"
+const RUNTIME_AUTOLOAD_PATH := "res://addons/godot_bridge/runtime/bridge_runtime.gd"
 
 var _server: BridgeServer
+var _debugger_plugin: EditorDebuggerPlugin
 var _status_label: Label
 
 
 func _enter_tree() -> void:
+	_ensure_runtime_autoload()
+
+	_debugger_plugin = BridgeDebuggerPlugin.new()
+	add_debugger_plugin(_debugger_plugin)
+
 	_server = BridgeServer.new()
-	_server.init_plugin(self)
+	_debugger_plugin.set_server(_server)
+	_server.init_plugin(self, _debugger_plugin)
 	_server.status_changed.connect(_on_status_changed)
 	add_child(_server)
 
@@ -22,6 +33,10 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
+	if _debugger_plugin:
+		remove_debugger_plugin(_debugger_plugin)
+		_debugger_plugin = null
+
 	if _server:
 		_server.stop()
 		remove_child(_server)
@@ -32,6 +47,8 @@ func _exit_tree() -> void:
 		_status_label.queue_free()
 		_status_label = null
 
+	_remove_runtime_autoload()
+
 
 func _get_port() -> int:
 	var setting := "godot_bridge/port"
@@ -40,6 +57,20 @@ func _get_port() -> int:
 		ProjectSettings.set_initial_value(setting, 6505)
 		ProjectSettings.save()
 	return int(ProjectSettings.get_setting(setting))
+
+
+func _ensure_runtime_autoload() -> void:
+	var setting := "autoload/%s" % RUNTIME_AUTOLOAD_NAME
+	if ProjectSettings.has_setting(setting):
+		return
+	add_autoload_singleton(RUNTIME_AUTOLOAD_NAME, RUNTIME_AUTOLOAD_PATH)
+
+
+func _remove_runtime_autoload() -> void:
+	var setting := "autoload/%s" % RUNTIME_AUTOLOAD_NAME
+	if not ProjectSettings.has_setting(setting):
+		return
+	remove_autoload_singleton(RUNTIME_AUTOLOAD_NAME)
 
 
 func _on_status_changed(status: String) -> void:

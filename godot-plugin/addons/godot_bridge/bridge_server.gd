@@ -25,17 +25,21 @@ var _port        : int
 var _connections := {}
 var _next_connection_id := 1
 var _active_request_connection_id := -1
+var _next_game_screenshot_seq := 1
+var _pending_game_screenshot_requests := {}
 var _script_debuggers: Array = []
 var _debug_backlog := []
 var _plugin: EditorPlugin
+var _debugger_plugin
 
 
 # ---------------------------------------------------------------------------
 # Lifecycle
 # ---------------------------------------------------------------------------
 
-func init_plugin(plugin: EditorPlugin) -> void:
+func init_plugin(plugin: EditorPlugin, debugger_plugin = null) -> void:
 	_plugin = plugin
+	_debugger_plugin = debugger_plugin
 
 
 func start(port: int) -> void:
@@ -95,6 +99,8 @@ func _process(delta: float) -> void:
 		if _connections.has(connection_id):
 			_disconnect_connection(connection_id)
 
+	_expire_game_screenshot_requests()
+
 
 func _poll_connection(connection_id: int, delta: float, dead_connection_ids: Array) -> void:
 	if not _connections.has(connection_id):
@@ -137,6 +143,11 @@ func _disconnect_connection(connection_id: int) -> void:
 	if peer:
 		peer.close()
 	_connections.erase(connection_id)
+	for raw_seq in _pending_game_screenshot_requests.keys().duplicate():
+		var seq := int(raw_seq)
+		var pending: Dictionary = _pending_game_screenshot_requests[seq]
+		if int(pending.get("connection_id", -1)) == connection_id:
+			_pending_game_screenshot_requests.erase(seq)
 	if _active_request_connection_id == connection_id:
 		_active_request_connection_id = -1
 	_emit_connection_status()
@@ -231,6 +242,8 @@ func _dispatch(id: String, cmd: String, args: Dictionary) -> void:
 			_cmd_resource_reimport(id, args)
 		"resource_list":
 			_cmd_resource_list(id, args)
+		"game_screenshot":
+			_cmd_game_screenshot(id, args)
 		"screenshot":
 			_cmd_screenshot(id, args)
 		_:
@@ -242,13 +255,21 @@ func _dispatch(id: String, cmd: String, args: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 
 func _send_ok(id: String, data: Dictionary) -> void:
-	var payload := {"id": id, "ok": true, "data": data}
-	_send_json(_active_request_connection_id, payload)
+	_send_ok_to_connection(_active_request_connection_id, id, data)
 
 
 func _send_error(id: String, message: String) -> void:
+	_send_error_to_connection(_active_request_connection_id, id, message)
+
+
+func _send_ok_to_connection(connection_id: int, id: String, data: Dictionary) -> void:
+	var payload := {"id": id, "ok": true, "data": data}
+	_send_json(connection_id, payload)
+
+
+func _send_error_to_connection(connection_id: int, id: String, message: String) -> void:
 	var payload := {"id": id, "ok": false, "error": message}
-	_send_json(_active_request_connection_id, payload)
+	_send_json(connection_id, payload)
 
 
 func _send_json(connection_id: int, payload: Dictionary) -> void:
@@ -265,6 +286,53 @@ func push_debug_event(event_name: String, data: Dictionary) -> void:
 	_record_debug_event(event_name, data)
 	for connection_id in _connection_ids_for_event(event_name):
 		_send_json(connection_id, {"type": "event", "event": event_name, "data": data})
+
+
+func handle_game_screenshot_result(_session_id: int, data: Array) -> void:
+	var payload := _parse_game_screenshot_payload(data)
+	var seq := int(payload.get("seq", -1))
+	if seq < 0 or not _pending_game_screenshot_requests.has(seq):
+		return
+
+	var pending: Dictionary = _pending_game_screenshot_requests[seq]
+	_pending_game_screenshot_requests.erase(seq)
+
+	var connection_id := int(pending.get("connection_id", -1))
+	var request_id := str(pending.get("id", ""))
+	var error_text := str(payload.get("error", ""))
+	if not error_text.is_empty():
+		_send_error_to_connection(connection_id, request_id, error_text)
+		return
+
+	_send_ok_to_connection(connection_id, request_id, {
+		"png_base64": str(payload.get("png_base64", "")),
+		"width": int(payload.get("width", 0)),
+		"height": int(payload.get("height", 0)),
+	})
+
+
+func _parse_game_screenshot_payload(data: Array) -> Dictionary:
+	if data.is_empty():
+		return {}
+	var payload = data[0]
+	if payload is Dictionary:
+		return payload
+	return {}
+
+
+func _expire_game_screenshot_requests() -> void:
+	if _pending_game_screenshot_requests.is_empty():
+		return
+
+	var now := Time.get_ticks_msec()
+	for raw_seq in _pending_game_screenshot_requests.keys().duplicate():
+		var seq := int(raw_seq)
+		var pending: Dictionary = _pending_game_screenshot_requests[seq]
+		var started_at := int(pending.get("started_at_msec", now))
+		if float(now - started_at) / 1000.0 < RESPONSE_TIMEOUT:
+			continue
+		_pending_game_screenshot_requests.erase(seq)
+		_send_error_to_connection(int(pending.get("connection_id", -1)), str(pending.get("id", "")), "game screenshot timed out")
 
 
 # ---------------------------------------------------------------------------
@@ -1224,6 +1292,25 @@ func _cmd_resource_list(id: String, args: Dictionary) -> void:
 # ---------------------------------------------------------------------------
 # Commands — screenshot
 # ---------------------------------------------------------------------------
+
+func _cmd_game_screenshot(id: String, _args: Dictionary) -> void:
+	if _debugger_plugin == null:
+		_send_error(id, "game screenshot debugger is unavailable")
+		return
+
+	var connection_id := _active_request_connection_id
+	var seq := _next_game_screenshot_seq
+	_next_game_screenshot_seq += 1
+	_pending_game_screenshot_requests[seq] = {
+		"id": id,
+		"connection_id": connection_id,
+		"started_at_msec": Time.get_ticks_msec(),
+	}
+	if _debugger_plugin.request_game_screenshot(seq):
+		return
+
+	_pending_game_screenshot_requests.erase(seq)
+	_send_error(id, "no running game")
 
 func _cmd_screenshot(id: String, _args: Dictionary) -> void:
 	var viewport := EditorInterface.get_editor_viewport_2d()
