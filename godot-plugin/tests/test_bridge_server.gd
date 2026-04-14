@@ -11,6 +11,7 @@ func run() -> Array[String]:
 	_test_coerce_prop_loads_resource_paths(failures)
 	_test_coerce_prop_loads_texture_paths(failures)
 	_test_coerce_prop_preserves_null(failures)
+	_test_apply_props_sets_sprite_frames_before_animation(failures)
 	return failures
 
 
@@ -76,6 +77,23 @@ func _test_coerce_prop_loads_texture_paths(failures: Array[String]) -> void:
 		failures.append("material resource path should coerce to a Material resource")
 	else:
 		_assert_eq(failures, value.resource_path, "res://tests/fixtures/test_material.tres", "coerced material should keep its resource path")
+	sprite.free()
+	server.free()
+
+
+func _test_apply_props_sets_sprite_frames_before_animation(failures: Array[String]) -> void:
+	var server = BridgeServer.new()
+	var sprite := AnimatedSprite2D.new()
+	var frames := SpriteFrames.new()
+	frames.add_animation("walk")
+	frames.add_frame("walk", ImageTexture.create_from_image(Image.create(1, 1, false, Image.FORMAT_RGBA8)))
+	var path := "res://tests/fixtures/test_sprite_frames.tres"
+	var err := ResourceSaver.save(frames, path)
+	if err != OK:
+		failures.append("failed to save sprite frames fixture")
+	else:
+		server._apply_props(sprite, {"animation": "walk", "sprite_frames": path})
+		_assert_eq(failures, sprite.animation, &"walk", "sprite_frames should be applied before animation")
 	sprite.free()
 	server.free()
 

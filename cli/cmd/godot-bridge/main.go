@@ -238,6 +238,8 @@ func run(cfg config, args []string) error {
 		return runProject(cfg, args[1:])
 	case "animation":
 		return runAnimation(cfg, args[1:])
+	case "sprite-frames":
+		return runSpriteFrames(cfg, args[1:])
 	case "debug":
 		return runDebug(cfg, args[1:])
 	case "screenshot":
@@ -1008,6 +1010,34 @@ func buildSpec() cliSpec {
 				OutputModes:   []string{"text", "json"},
 			},
 			{
+				Path:          []string{"sprite-frames", "new"},
+				Usage:         "godot-bridge sprite-frames new PATH --data JSON",
+				PluginCommand: "sprite_frames_new",
+				RequiredArgs:  []string{"PATH", "--data JSON"},
+				OptionalArgs:  []string{"--json"},
+				Description:   "Creates a SpriteFrames resource from JSON animation data.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"sprite-frames", "get"},
+				Usage:         "godot-bridge sprite-frames get PATH",
+				PluginCommand: "sprite_frames_get",
+				RequiredArgs:  []string{"PATH"},
+				OptionalArgs:  []string{"--json"},
+				Description:   "Reads a SpriteFrames resource back as JSON animation data.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
+				Path:          []string{"sprite-frames", "modify"},
+				Usage:         "godot-bridge sprite-frames modify PATH --data JSON [--mode merge|replace]",
+				PluginCommand: "sprite_frames_modify",
+				RequiredArgs:  []string{"PATH", "--data JSON"},
+				OptionalArgs:  []string{"--mode merge|replace", "--json"},
+				Defaults:      []string{"mode=merge"},
+				Description:   "Updates a SpriteFrames resource by replacing named animations or fully replacing the resource.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
 				Path:          []string{"debug", "watch"},
 				Usage:         "godot-bridge debug watch [--events output,error] [--json]",
 				PluginCommand: "debug_subscribe",
@@ -1301,6 +1331,9 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  animation get PATH --animation NAME")
 	fmt.Fprintln(out, "  animation new PATH --data JSON")
 	fmt.Fprintln(out, "  animation modify PATH --animation NAME --data JSON")
+	fmt.Fprintln(out, "  sprite-frames new PATH --data JSON")
+	fmt.Fprintln(out, "  sprite-frames get PATH")
+	fmt.Fprintln(out, "  sprite-frames modify PATH --data JSON [--mode merge|replace]")
 	fmt.Fprintln(out, "  debug watch [--events output,error] [--json]")
 	fmt.Fprintln(out, "  screenshot [--out FILE]")
 	fmt.Fprintln(out, "  resource list [DIR]")

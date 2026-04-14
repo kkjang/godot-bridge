@@ -1,3 +1,5 @@
+COMPLETED
+
 # Plan: SpriteFrames Authoring (`sprite_frames_*`)
 
 Part of the 2D game enablement series — see `docs/plans/2d-game-overview.md`.

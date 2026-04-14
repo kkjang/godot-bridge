@@ -1,0 +1,29 @@
+[gd_resource type="SpriteFrames" format=3]
+
+[sub_resource type="Image" id="Image_hen6s"]
+data = {
+"data": PackedByteArray(0, 0, 0, 0),
+"format": "RGBA8",
+"height": 1,
+"mipmaps": false,
+"width": 1
+}
+
+[sub_resource type="ImageTexture" id="ImageTexture_ff0it"]
+image = SubResource("Image_hen6s")
+
+[resource]
+animations = [{
+"frames": [],
+"loop": true,
+"name": &"default",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("ImageTexture_ff0it")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 5.0
+}]

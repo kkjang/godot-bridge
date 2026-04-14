@@ -40,3 +40,17 @@ func TestBuildSpecIncludesGameScreenshot(t *testing.T) {
 	}
 	t.Fatal("game screenshot command missing from spec")
 }
+
+func TestBuildSpecIncludesSpriteFramesModify(t *testing.T) {
+	spec := buildSpec()
+	for _, cmd := range spec.Commands {
+		if cmd.Usage != "godot-bridge sprite-frames modify PATH --data JSON [--mode merge|replace]" {
+			continue
+		}
+		if cmd.PluginCommand != "sprite_frames_modify" {
+			t.Fatalf("sprite-frames modify plugin command = %q, want %q", cmd.PluginCommand, "sprite_frames_modify")
+		}
+		return
+	}
+	t.Fatal("sprite-frames modify command missing from spec")
+}
