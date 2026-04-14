@@ -4,6 +4,8 @@ Go CLI for driving the Godot editor through the bridge plugin.
 
 Use `README.md` for the user-facing command surface. Use this file for implementation guidance.
 
+- Before using this CLI against a real Godot project, read `../OPERATING_MODES.md` and default to Automated mode unless the user explicitly prefers Interactive mode.
+
 ## Scope
 
 - Keep new work aligned with the command model documented here and in `README.md`.
@@ -38,6 +40,7 @@ Use `README.md` for the user-facing command surface. Use this file for implement
 - `godot-bridge script open PATH`
 - `godot-bridge screenshot`
 - `godot-bridge resource list [DIR]`
+- `godot-bridge resource reimport [PATH]`
 
 ## Design Constraints
 

@@ -4,6 +4,8 @@ Shared GDScript LSP bridge plus tool-specific integrations.
 
 Use `README.md` for setup and integration steps. Use this file for implementation constraints.
 
+- Before using this component in a real Godot project workflow, read `../OPERATING_MODES.md` and align with the chosen Automated or Interactive mode.
+
 ## Scope
 
 - Work here when changing the stdio-to-TCP proxy or its tool adapters.

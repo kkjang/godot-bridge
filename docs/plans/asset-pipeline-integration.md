@@ -4,6 +4,12 @@
 
 An AI agent building games needs to generate art (2D sprites, 3D models, animations) and get those assets into the Godot project. Godot is **not an art tool** — it imports art, it doesn't create it. The bridge's role is to handle the "get it into the scene" part after external tools generate the assets.
 
+This plan assumes the operating-model guidance in `OPERATING_MODES.md`:
+
+- Default to **Automated mode**.
+- Treat a visible live editor session as optional.
+- If the user prefers **Interactive mode**, warn when import or batch-transform steps may leave the editor temporarily out of sync with disk.
+
 This plan covers:
 1. The bridge commands needed to support the pipeline (reimport, resource coercion, instancing)
 2. The orchestration architecture — what the agent does externally vs. through the bridge
@@ -47,7 +53,29 @@ Check the property's `class_name` from PropertyInfo to confirm it's a Resource s
 
 ### 3. Scene Instancing (shared with Plan 1)
 
-**Plugin command: `node_instance`** — instantiate a PackedScene (.tscn/.glb) as a child node. Covered in Plan 1. Required here for the 3D art pipeline (instancing imported .glb scenes).
+**Plugin command: `node_instance`** — instantiate a PackedScene (.tscn/.glb) as a child node.
+
+- This command already exists in the bridge and CLI.
+- Treat it as an existing dependency to validate, not new implementation work.
+- It remains required here for the 3D art pipeline (instancing imported `.glb` scenes).
+
+---
+
+## Operating Mode Notes
+
+### Automated mode
+
+- Preferred for this entire plan.
+- Write assets to disk directly.
+- Trigger import or reimport through the most reliable available backend.
+- Treat disk as the source of truth.
+
+### Interactive mode
+
+- Allowed, but not the primary workflow.
+- The agent can still write files and trigger reimport, but the editor may need reload, reopen, or restart to reflect those changes.
+- Do not assume the visible editor state is current after headless or filesystem-driven mutations.
+- If plugin files changed, restart the editor before relying on the bridge again.
 
 ---
 
@@ -72,8 +100,16 @@ Agent                          Filesystem              Bridge
 ### Concrete steps
 1. Agent calls an image generation API (DALL-E, Stable Diffusion, Flux, etc.)
 2. Agent writes the resulting PNG to the project's `res://` directory (plain file I/O)
-3. `godot-bridge resource reimport res://art/hero.png` — Godot processes the file and creates the `.import` sidecar
+3. Trigger import or reimport for `res://art/hero.png`
+   - Current built-in path: `godot-bridge resource reimport res://art/hero.png`
+   - Plain headless Godot execution may also be a valid agent-side option, but is not yet the standardized product surface
 4. `godot-bridge node modify /root/Main/Player/Sprite2D --props '{"texture": "res://art/hero.png"}'` — assigns the texture (requires resource path coercion)
+
+### Interactive mode cautions
+
+- Writing a new PNG is usually safe with the editor open.
+- Reimporting while related resources are already loaded may leave the visible editor behind disk until reload or reopen.
+- If the user wants a live-editor experience, warn that asset import is reliable but not always instantly reflected in open tabs.
 
 ### Spritesheets / 2D frame animation
 1. Agent generates a spritesheet PNG externally
@@ -115,8 +151,15 @@ Agent                          Filesystem              Bridge
 ### Concrete steps
 1. Agent calls a 3D generation API or runs Blender Python scripts
 2. Agent writes the `.glb`/`.gltf` to the project's `res://models/` directory
-3. `godot-bridge resource reimport res://models/enemy.glb` — Godot imports the model and generates an internal scene
+3. Trigger import or reimport for `res://models/enemy.glb`
+   - Current built-in path: `godot-bridge resource reimport res://models/enemy.glb`
+   - Plain headless Godot execution may also be a valid agent-side option, but is not yet the standardized product surface
 4. `godot-bridge node instance res://models/enemy.glb --parent /root/Main/World --name Enemy1` — instances the imported scene
+
+### Interactive mode cautions
+
+- Imported 3D assets may not appear correctly in a live editor session until the editor refreshes its view of the resource.
+- Batch-transforming or replacing many model files is better suited to Automated mode.
 
 ### 3D import settings
 - The agent can write `.import` files to configure: animation handling (import/don't import), mesh compression, material mode (keep/convert), bone naming convention
@@ -147,7 +190,9 @@ Agent                          Filesystem              Bridge
 | Spritesheet frame config | Bridge or Agent | `animation_*` commands or `.tres` on disk |
 
 ### Key principle
-The bridge doesn't call external APIs or generate art. It handles **import triggering** and **scene integration**. The agent orchestrates everything else.
+The bridge doesn't call external APIs or generate art. It handles **import triggering** and **scene integration** where the bridge backend is the right tool. The agent orchestrates everything else.
+
+For Automated mode, the larger goal is reliable asset ingestion and scene integration. The plugin-backed CLI is one backend for that work, not the only possible execution path.
 
 ---
 
@@ -171,11 +216,11 @@ The bridge doesn't call external APIs or generate art. It handles **import trigg
 
 ## Implementation Summary
 
-Only 3 changes are needed in the bridge to support the full art pipeline:
+Only 2 new bridge changes are needed to support the missing parts of the art pipeline:
 
 1. **`resource_reimport` command** — ~15 lines in `bridge_server.gd`, ~30 lines in `main.go`
 2. **Resource path coercion** — ~10 lines in `bridge_server.gd` (`_json_to_variant` or `_coerce_prop`)
-3. **`node_instance` command** — ~30 lines in `bridge_server.gd`, ~40 lines in `main.go` (shared with Plan 1)
+3. **`node_instance` validation** — confirm the existing command behaves correctly for imported `.glb` scenes
 
 Everything else is agent-side orchestration between external APIs and the bridge.
 
@@ -192,8 +237,16 @@ Everything else is agent-side orchestration between external APIs and the bridge
 
 ## Verification
 
+### Automated verification
+
 1. Build CLI: `cd cli && go build ./cmd/godot-bridge`
-2. **Reimport test:** Drop a PNG into the project's `res://` directory via filesystem, run `godot-bridge resource reimport res://test.png`, verify the `.import` file appears
-3. **Resource coercion test:** Create a Sprite2D node, run `godot-bridge node modify <path> --props '{"texture": "res://icon.svg"}'` (Godot's default icon), verify the texture appears
+2. **Reimport test:** Drop a PNG into the project's `res://` directory via filesystem, run `godot-bridge resource reimport res://test.png`, verify the imported artifact appears as expected
+3. **Resource coercion test:** Create a Sprite2D node, run `godot-bridge node modify <path> --props '{"texture": "res://icon.svg"}'` (Godot's default icon), verify the property resolves successfully
 4. **3D instance test:** Place a `.glb` file in `res://`, reimport, run `godot-bridge node instance res://model.glb`, verify the 3D scene appears in the node tree
 5. Run `godot-bridge spec --markdown` — verify new commands appear
+
+### Interactive verification
+
+1. Repeat the same flow with the editor open only if the user wants live confirmation.
+2. If imported assets or scenes do not visibly update, reload or reopen before treating the editor view as authoritative.
+3. If plugin files changed during development, restart the editor before relying on the bridge.

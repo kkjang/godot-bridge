@@ -4,6 +4,13 @@ CLI + Godot editor plugin for AI-assisted Godot development.
 
 Use `README.md` for human-facing setup and usage. External bootstrap instructions for real game projects live there as well. Use this file for implementation guidance and workflow constraints.
 
+## Operating Modes
+
+- Before working on a real Godot project, read `OPERATING_MODES.md`.
+- Treat `OPERATING_MODES.md` as required context for choosing between Automated and Interactive workflows.
+- Default to **Automated mode** unless the user explicitly prefers Interactive mode.
+- If the user's mode preference is unclear and the work may affect editor state, ask first.
+
 ## Goal
 
 - Build a token-efficient alternative to large MCP tool surfaces for Godot workflows.

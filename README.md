@@ -15,6 +15,15 @@ This README has two audiences:
 - If you want to install Godot Bridge into your own game project, start at `Use In A Game Project`.
 - If you are developing or releasing this repository itself, skip to `Develop The Bridge`.
 
+## Operating Modes
+
+Godot Bridge supports two workflows when an agent is working in a real game project:
+
+- **Automated mode**: headless-first, optimized for reliability and repeatable automation.
+- **Interactive mode**: keep the editor open for inspection and lightweight live edits, with some risk of editor state drifting from disk.
+
+For the full agent-facing guidance on when to use each mode, tradeoffs, and warnings around reloads or restarts, see [`OPERATING_MODES.md`](OPERATING_MODES.md).
+
 ## Use In A Game Project
 
 ### Bootstrap from a game project

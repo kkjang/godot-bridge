@@ -624,28 +624,61 @@ func runScreenshot(cfg config, args []string) error {
 }
 
 func runResource(cfg config, args []string) error {
-	if len(args) == 0 || args[0] != "list" {
-		return errors.New("usage: godot-bridge resource list [DIR]")
+	if len(args) == 0 {
+		return errors.New("usage: godot-bridge resource <list|reimport> ...")
 	}
-	if len(args) > 2 {
-		return errors.New("usage: godot-bridge resource list [DIR]")
-	}
-	path := "res://"
-	if len(args) == 2 {
-		path = args[1]
-	}
-	_, data, err := sendCommand(cfg, "resource_list", map[string]any{"path": path})
-	if err != nil {
+
+	switch args[0] {
+	case "list":
+		if len(args) > 2 {
+			return errors.New("usage: godot-bridge resource list [DIR]")
+		}
+		path := "res://"
+		if len(args) == 2 {
+			path = args[1]
+		}
+		_, data, err := sendCommand(cfg, "resource_list", map[string]any{"path": path})
+		if err != nil {
+			return err
+		}
+		if cfg.asJSON {
+			return writeRawJSON(cfg.stdout, data)
+		}
+		var listing resourceList
+		if err := json.Unmarshal(data, &listing); err != nil {
+			return err
+		}
+		return printResourceList(cfg.stdout, listing)
+	case "reimport":
+		if len(args) > 2 {
+			return errors.New("usage: godot-bridge resource reimport [PATH]")
+		}
+		path := ""
+		if len(args) == 2 {
+			path = args[1]
+		}
+		_, data, err := sendCommand(cfg, "resource_reimport", map[string]any{"path": path})
+		if err != nil {
+			return err
+		}
+		if cfg.asJSON {
+			return writeRawJSON(cfg.stdout, data)
+		}
+		var payload struct {
+			Scanned string `json:"scanned"`
+		}
+		if err := json.Unmarshal(data, &payload); err != nil {
+			return err
+		}
+		if payload.Scanned == "full" {
+			_, err = fmt.Fprintln(cfg.stdout, "triggered full resource scan")
+			return err
+		}
+		_, err = fmt.Fprintf(cfg.stdout, "reimported %s\n", payload.Scanned)
 		return err
+	default:
+		return fmt.Errorf("unknown resource command %q", args[0])
 	}
-	if cfg.asJSON {
-		return writeRawJSON(cfg.stdout, data)
-	}
-	var listing resourceList
-	if err := json.Unmarshal(data, &listing); err != nil {
-		return err
-	}
-	return printResourceList(cfg.stdout, listing)
 }
 
 func parseJSONObject(text string, label string) (map[string]any, error) {
@@ -930,6 +963,15 @@ func buildSpec() cliSpec {
 				Description:   "Lists files and subdirectories from Godot's resource filesystem view.",
 				OutputModes:   []string{"text", "json"},
 			},
+			{
+				Path:          []string{"resource", "reimport"},
+				Usage:         "godot-bridge resource reimport [PATH]",
+				PluginCommand: "resource_reimport",
+				OptionalArgs:  []string{"PATH", "--json"},
+				Defaults:      []string{"PATH=full scan"},
+				Description:   "Triggers Godot to rescan one resource path or the full resource filesystem when omitted.",
+				OutputModes:   []string{"text", "json"},
+			},
 		},
 		Notes: []string{
 			"This CLI only covers plugin-backed editor commands.",
@@ -1190,6 +1232,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  debug watch [--events output,error] [--json]")
 	fmt.Fprintln(out, "  screenshot")
 	fmt.Fprintln(out, "  resource list [DIR]")
+	fmt.Fprintln(out, "  resource reimport [PATH]")
 }
 
 func exitf(out *os.File, format string, args ...any) {

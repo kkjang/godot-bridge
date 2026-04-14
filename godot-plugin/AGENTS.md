@@ -4,6 +4,8 @@ Godot 4.x editor plugin that exposes the WebSocket command server on `localhost:
 
 Use `README.md` for installation and operator-facing usage. Use this file when changing the implementation.
 
+- Before using this plugin against a real Godot project, read `../OPERATING_MODES.md` and default to Automated mode unless the user explicitly prefers Interactive mode.
+
 ## Scope
 
 - Work here when changing the editor-side bridge implementation.
@@ -55,6 +57,7 @@ Use `README.md` for installation and operator-facing usage. Use this file when c
 - `scene_run`
 - `scene_stop`
 - `script_open`
+- `resource_reimport`
 - `resource_list`
 - `screenshot`
 
