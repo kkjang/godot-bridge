@@ -132,6 +132,9 @@ The bridge supports multiple websocket clients, so `debug watch` can stay connec
 | `godot-bridge animation get PATH --animation NAME` | `animation_get` | `PATH`, `--animation NAME` | `--json` | none | Shows track and keyframe data for one animation. |
 | `godot-bridge animation new PATH --data JSON` | `animation_new` | `PATH`, `--data JSON` | `--json` | none | Creates a new animation from JSON data on an AnimationPlayer. |
 | `godot-bridge animation modify PATH --animation NAME --data JSON` | `animation_modify` | `PATH`, `--animation NAME`, `--data JSON` | `--json` | none | Updates an existing animation using JSON track data. |
+| `godot-bridge sprite-frames new PATH --data JSON` | `sprite_frames_new` | `PATH`, `--data JSON` | `--json` | none | Creates a SpriteFrames resource from JSON animation data. |
+| `godot-bridge sprite-frames get PATH` | `sprite_frames_get` | `PATH` | `--json` | none | Reads a SpriteFrames resource back as JSON animation data. |
+| `godot-bridge sprite-frames modify PATH --data JSON [--mode merge\|replace]` | `sprite_frames_modify` | `PATH`, `--data JSON` | `--mode merge\|replace`, `--json` | `mode=merge` | Updates a SpriteFrames resource by replacing named animations or fully replacing the resource. |
 | `godot-bridge debug watch [--events output,error] [--json]` | `debug_subscribe` | none | `--events output,error`, `--json` | `events=all` | Subscribes to streamed debug events and prints them until interrupted. |
 | `godot-bridge screenshot [--out FILE]` | `screenshot` | none | `--out FILE`, `--json` | `text output` | Captures the current 2D editor viewport. |
 | `godot-bridge resource list [DIR]` | `resource_list` | none | `DIR`, `--json` | `DIR=res://` | Lists files and subdirectories from Godot's resource filesystem view. |

@@ -19,6 +19,7 @@ const DEBUG_EVENT_BACKLOG_LIMIT := 200
 const BridgeAnimationCodec = preload("res://addons/godot_bridge/bridge_animation_codec.gd")
 const BridgeDebugState = preload("res://addons/godot_bridge/bridge_debug_state.gd")
 const BridgeProjectSettings = preload("res://addons/godot_bridge/bridge_project_settings.gd")
+const BridgeSpriteFramesCodec = preload("res://addons/godot_bridge/bridge_sprite_frames_codec.gd")
 
 var _tcp_server  : TCPServer
 var _port        : int
@@ -234,6 +235,12 @@ func _dispatch(id: String, cmd: String, args: Dictionary) -> void:
 			_cmd_animation_new(id, args)
 		"animation_modify":
 			_cmd_animation_modify(id, args)
+		"sprite_frames_new":
+			_cmd_sprite_frames_new(id, args)
+		"sprite_frames_get":
+			_cmd_sprite_frames_get(id, args)
+		"sprite_frames_modify":
+			_cmd_sprite_frames_modify(id, args)
 		"debug_subscribe":
 			_cmd_debug_subscribe(id, args)
 		"debug_unsubscribe":
@@ -1251,6 +1258,83 @@ func _cmd_script_open(id: String, args: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------------------
+# Commands - sprite_frames
+# ---------------------------------------------------------------------------
+
+func _cmd_sprite_frames_new(id: String, args: Dictionary) -> void:
+	var path := str(args.get("path", ""))
+	if path.is_empty():
+		_send_error(id, "missing 'path' arg")
+		return
+
+	var result := BridgeSpriteFramesCodec.build_sprite_frames(args)
+	if result.has("error"):
+		_send_error(id, str(result.get("error", "invalid SpriteFrames data")))
+		return
+	var sprite_frames := result.get("sprite_frames") as SpriteFrames
+	if sprite_frames == null:
+		_send_error(id, "failed to build SpriteFrames resource")
+		return
+
+	var save_err := ResourceSaver.save(sprite_frames, path)
+	if save_err != OK:
+		_send_error(id, "ResourceSaver.save() failed (error %d)" % save_err)
+		return
+
+	EditorInterface.get_resource_filesystem().update_file(path)
+	var saved_sprite_frames := _load_sprite_frames(path)
+	_send_ok(id, BridgeSpriteFramesCodec.sprite_frames_detail(saved_sprite_frames if saved_sprite_frames != null else sprite_frames))
+
+
+func _cmd_sprite_frames_get(id: String, args: Dictionary) -> void:
+	var sprite_frames := _load_sprite_frames(str(args.get("path", "")))
+	if sprite_frames == null:
+		_send_error(id, "SpriteFrames resource not found")
+		return
+	_send_ok(id, BridgeSpriteFramesCodec.sprite_frames_detail(sprite_frames))
+
+
+func _cmd_sprite_frames_modify(id: String, args: Dictionary) -> void:
+	var path := str(args.get("path", ""))
+	var sprite_frames := _load_sprite_frames(path)
+	if sprite_frames == null:
+		_send_error(id, "SpriteFrames resource not found")
+		return
+
+	var mode := str(args.get("mode", "merge"))
+	if mode != "merge" and mode != "replace":
+		_send_error(id, "invalid 'mode' arg: %s" % mode)
+		return
+
+	var result := BridgeSpriteFramesCodec.apply_sprite_frames_changes(sprite_frames, args, mode)
+	if result.has("error"):
+		_send_error(id, str(result.get("error", "invalid SpriteFrames data")))
+		return
+	var updated := result.get("sprite_frames") as SpriteFrames
+	if updated == null:
+		_send_error(id, "failed to build SpriteFrames resource")
+		return
+
+	var save_err := ResourceSaver.save(updated, path)
+	if save_err != OK:
+		_send_error(id, "ResourceSaver.save() failed (error %d)" % save_err)
+		return
+
+	EditorInterface.get_resource_filesystem().update_file(path)
+	var saved_sprite_frames := _load_sprite_frames(path)
+	_send_ok(id, BridgeSpriteFramesCodec.sprite_frames_detail(saved_sprite_frames if saved_sprite_frames != null else updated))
+
+
+func _load_sprite_frames(path: String) -> SpriteFrames:
+	if path.is_empty():
+		return null
+	var resource := ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if not (resource is SpriteFrames):
+		return null
+	return resource as SpriteFrames
+
+
+# ---------------------------------------------------------------------------
 # Commands — resource_reimport / resource_list
 # ---------------------------------------------------------------------------
 
@@ -1326,7 +1410,11 @@ func _cmd_screenshot(id: String, _args: Dictionary) -> void:
 
 ## Apply a dictionary of JSON-encoded properties to a node.
 func _apply_props(node: Node, props: Dictionary) -> void:
+	if props.has("sprite_frames"):
+		node.set("sprite_frames", _coerce_prop(node, "sprite_frames", props["sprite_frames"]))
 	for key in props:
+		if key == "sprite_frames":
+			continue
 		node.set(key, _coerce_prop(node, key, props[key]))
 
 

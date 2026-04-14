@@ -41,6 +41,30 @@ type animationDetail struct {
 	Tracks   []animationTrack `json:"tracks"`
 }
 
+type spriteFramesRegion struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+	W float64 `json:"w"`
+	H float64 `json:"h"`
+}
+
+type spriteFramesFrame struct {
+	Texture  string              `json:"texture"`
+	Region   *spriteFramesRegion `json:"region,omitempty"`
+	Duration float64             `json:"duration"`
+}
+
+type spriteFramesAnimation struct {
+	Name   string              `json:"name"`
+	Speed  float64             `json:"speed"`
+	Loop   bool                `json:"loop"`
+	Frames []spriteFramesFrame `json:"frames"`
+}
+
+type spriteFramesDetail struct {
+	Animations []spriteFramesAnimation `json:"animations"`
+}
+
 func runSignal(cfg config, args []string) error {
 	if len(args) == 0 {
 		return errors.New("usage: godot-bridge signal <connect|disconnect|list> ...")
@@ -303,6 +327,89 @@ func runAnimation(cfg config, args []string) error {
 	}
 }
 
+func runSpriteFrames(cfg config, args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: godot-bridge sprite-frames <new|get|modify> ...")
+	}
+
+	switch args[0] {
+	case "new":
+		fs := flag.NewFlagSet("sprite-frames new", flag.ContinueOnError)
+		fs.SetOutput(cfg.stderr)
+		dataText := fs.String("data", "", "")
+		if err := fs.Parse(reorderFlags(args[1:], "data")); err != nil {
+			return err
+		}
+		if fs.NArg() != 1 || *dataText == "" {
+			return errors.New("usage: godot-bridge sprite-frames new PATH --data JSON")
+		}
+		payload, err := buildSpriteFramesPayload(fs.Arg(0), *dataText)
+		if err != nil {
+			return err
+		}
+		_, data, err := sendCommand(cfg, "sprite_frames_new", payload)
+		if err != nil {
+			return err
+		}
+		if cfg.asJSON {
+			return writeRawJSON(cfg.stdout, data)
+		}
+		var detail spriteFramesDetail
+		if err := json.Unmarshal(data, &detail); err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(cfg.stdout, "created sprite frames resource with %d animation(s)\n", len(detail.Animations))
+		return err
+	case "get":
+		if len(args) != 2 {
+			return errors.New("usage: godot-bridge sprite-frames get PATH")
+		}
+		_, data, err := sendCommand(cfg, "sprite_frames_get", map[string]any{"path": args[1]})
+		if err != nil {
+			return err
+		}
+		if cfg.asJSON {
+			return writeRawJSON(cfg.stdout, data)
+		}
+		var detail spriteFramesDetail
+		if err := json.Unmarshal(data, &detail); err != nil {
+			return err
+		}
+		return printSpriteFramesDetail(cfg, detail)
+	case "modify":
+		fs := flag.NewFlagSet("sprite-frames modify", flag.ContinueOnError)
+		fs.SetOutput(cfg.stderr)
+		dataText := fs.String("data", "", "")
+		mode := fs.String("mode", "merge", "")
+		if err := fs.Parse(reorderFlags(args[1:], "data", "mode")); err != nil {
+			return err
+		}
+		if fs.NArg() != 1 || *dataText == "" {
+			return errors.New("usage: godot-bridge sprite-frames modify PATH --data JSON [--mode merge|replace]")
+		}
+		payload, err := buildSpriteFramesPayload(fs.Arg(0), *dataText)
+		if err != nil {
+			return err
+		}
+		payload["mode"] = *mode
+		_, data, err := sendCommand(cfg, "sprite_frames_modify", payload)
+		if err != nil {
+			return err
+		}
+		if cfg.asJSON {
+			return writeRawJSON(cfg.stdout, data)
+		}
+		var detail spriteFramesDetail
+		if err := json.Unmarshal(data, &detail); err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(cfg.stdout, "updated sprite frames resource with %d animation(s)\n", len(detail.Animations))
+		return err
+	default:
+		return fmt.Errorf("unknown sprite-frames command %q", args[0])
+	}
+}
+
 func buildAnimationPayload(path string, animationName string, dataText string) (map[string]any, error) {
 	data, err := parseJSONObject(dataText, "--data")
 	if err != nil {
@@ -316,6 +423,17 @@ func buildAnimationPayload(path string, animationName string, dataText string) (
 		return nil, errors.New("animation data must include \"name\"")
 	}
 	return payload, nil
+}
+
+func buildSpriteFramesPayload(path string, dataText string) (map[string]any, error) {
+	data, err := parseJSONObject(dataText, "--data")
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := data["animations"]; !ok {
+		return nil, errors.New("sprite frame data must include \"animations\"")
+	}
+	return mergeArgs(map[string]any{"path": path}, data, "path"), nil
 }
 
 func printAnimationDetail(cfg config, detail animationDetail) error {
@@ -332,6 +450,29 @@ func printAnimationDetail(cfg config, detail animationDetail) error {
 				return err
 			}
 			if _, err := fmt.Fprintf(cfg.stdout, "  %.3f -> %s\n", keyframe.Time, encoded); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func printSpriteFramesDetail(cfg config, detail spriteFramesDetail) error {
+	if _, err := fmt.Fprintf(cfg.stdout, "animations: %d\n", len(detail.Animations)); err != nil {
+		return err
+	}
+	for _, animation := range detail.Animations {
+		if _, err := fmt.Fprintf(cfg.stdout, "- %s speed=%.3f loop=%t frames=%d\n", animation.Name, animation.Speed, animation.Loop, len(animation.Frames)); err != nil {
+			return err
+		}
+		for index, frame := range animation.Frames {
+			if frame.Region != nil {
+				if _, err := fmt.Fprintf(cfg.stdout, "  %d %s region=(%.0f,%.0f,%.0f,%.0f) duration=%.3f\n", index, frame.Texture, frame.Region.X, frame.Region.Y, frame.Region.W, frame.Region.H, frame.Duration); err != nil {
+					return err
+				}
+				continue
+			}
+			if _, err := fmt.Fprintf(cfg.stdout, "  %d %s duration=%.3f\n", index, frame.Texture, frame.Duration); err != nil {
 				return err
 			}
 		}

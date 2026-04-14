@@ -18,7 +18,7 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 1. For `.gd` files, prefer the configured GDScript LSP first when it is installed and available.
 2. Use normal LSP requests and follow-up inspection to surface diagnostics efficiently before trying heavier validation.
 3. Use filesystem tools directly for ordinary project file edits.
-4. Use the `godot-bridge` CLI for live editor operations such as scene open/save/run/stop, node inspection and mutation, signal wiring, scene instancing, project settings, animation authoring, script opening, editor and running-game screenshots, resource listing, resource reimport, debug streaming, and editor state inspection.
+4. Use the `godot-bridge` CLI for live editor operations such as scene open/save/run/stop, node inspection and mutation, signal wiring, scene instancing, project settings, animation authoring including `SpriteFrames`, script opening, editor and running-game screenshots, resource listing, resource reimport, debug streaming, and editor state inspection.
 5. Treat `godot-bridge spec` as the source of truth for CLI commands, flags, defaults, and plugin mappings.
 6. If LSP and direct inspection are not enough, escalate to heavier checks like running Godot in headless mode as smoke tests when appropriate.
 
@@ -74,6 +74,8 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 - `godot-bridge signal connect --source /root/Main/Button --signal pressed --target /root/Main/Game --method on_button_pressed`
 - `godot-bridge project get --prefix input/ --json`
 - `godot-bridge animation list /root/Main/AnimationPlayer --json`
+- `godot-bridge sprite-frames new res://art/player.tres --data '{"animations":[{"name":"idle","speed":6,"loop":true,"frames":[{"texture":"res://art/player_sheet.png","region":{"x":0,"y":0,"w":16,"h":16}}]}]}'`
+- `godot-bridge node modify /root/Main/Player --props '{"sprite_frames":"res://art/player.tres","animation":"idle","autoplay":"idle"}'`
 - `godot-bridge scene save`
 - `godot-bridge debug watch --events output,error`
 - `godot-bridge screenshot --json`
