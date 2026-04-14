@@ -35,8 +35,9 @@ Use `README.md` for the user-facing command surface. Use this file for implement
 - `godot-bridge scene save`
 - `godot-bridge scene run [PATH]`
 - `godot-bridge scene stop`
+- `godot-bridge game screenshot [--out FILE]`
 - `godot-bridge script open PATH`
-- `godot-bridge screenshot`
+- `godot-bridge screenshot [--out FILE]`
 - `godot-bridge resource list [DIR]`
 - `godot-bridge resource reimport [PATH]`
 

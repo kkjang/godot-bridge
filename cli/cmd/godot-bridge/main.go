@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -227,6 +228,8 @@ func run(cfg config, args []string) error {
 		return runNode(cfg, args[1:])
 	case "scene":
 		return runScene(cfg, args[1:])
+	case "game":
+		return runGame(cfg, args[1:])
 	case "script":
 		return runScript(cfg, args[1:])
 	case "signal":
@@ -604,23 +607,82 @@ func runScript(cfg config, args []string) error {
 	return err
 }
 
-func runScreenshot(cfg config, args []string) error {
-	if len(args) != 0 {
-		return errors.New("usage: godot-bridge screenshot")
+func runGame(cfg config, args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: godot-bridge game <screenshot> ...")
 	}
-	_, data, err := sendCommand(cfg, "screenshot", map[string]any{})
+
+	switch args[0] {
+	case "screenshot":
+		return runScreenshotCommand(cfg, args[1:], "godot-bridge game screenshot [--out FILE]", "game_screenshot")
+	default:
+		return fmt.Errorf("unknown game command %q", args[0])
+	}
+}
+
+func runScreenshot(cfg config, args []string) error {
+	return runScreenshotCommand(cfg, args, "godot-bridge screenshot [--out FILE]", "screenshot")
+}
+
+func runScreenshotCommand(cfg config, args []string, usage string, command string) error {
+	fs := flag.NewFlagSet(command, flag.ContinueOnError)
+	fs.SetOutput(cfg.stderr)
+	outPath := fs.String("out", "", "")
+	if err := fs.Parse(reorderFlags(args, "out")); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("usage: " + usage)
+	}
+
+	_, data, err := sendCommand(cfg, command, map[string]any{})
 	if err != nil {
 		return err
 	}
 	if cfg.asJSON {
+		if *outPath != "" {
+			if err := writeScreenshotFile(data, *outPath); err != nil {
+				return err
+			}
+		}
 		return writeRawJSON(cfg.stdout, data)
 	}
+	return printScreenshotSummary(cfg.stdout, data, *outPath)
+}
+
+func printScreenshotSummary(out *os.File, data json.RawMessage, outPath string) error {
 	var info screenshotInfo
 	if err := json.Unmarshal(data, &info); err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(cfg.stdout, "captured %dx%d screenshot (%d base64 bytes)\n", info.Width, info.Height, len(info.PNGBase64))
+	if outPath != "" {
+		if err := writeScreenshotBytes(info, outPath); err != nil {
+			return err
+		}
+		_, err := fmt.Fprintf(out, "captured %dx%d screenshot to %s\n", info.Width, info.Height, outPath)
+		return err
+	}
+	_, err := fmt.Fprintf(out, "captured %dx%d screenshot (%d base64 bytes)\n", info.Width, info.Height, len(info.PNGBase64))
 	return err
+}
+
+func writeScreenshotFile(data json.RawMessage, outPath string) error {
+	var info screenshotInfo
+	if err := json.Unmarshal(data, &info); err != nil {
+		return err
+	}
+	return writeScreenshotBytes(info, outPath)
+}
+
+func writeScreenshotBytes(info screenshotInfo, outPath string) error {
+	pngBytes, err := base64.StdEncoding.DecodeString(info.PNGBase64)
+	if err != nil {
+		return fmt.Errorf("decode screenshot payload: %w", err)
+	}
+	if err := os.WriteFile(outPath, pngBytes, 0o644); err != nil {
+		return fmt.Errorf("write screenshot file %s: %w", outPath, err)
+	}
+	return nil
 }
 
 func runResource(cfg config, args []string) error {
@@ -848,6 +910,15 @@ func buildSpec() cliSpec {
 				OutputModes:   []string{"text", "json"},
 			},
 			{
+				Path:          []string{"game", "screenshot"},
+				Usage:         "godot-bridge game screenshot [--out FILE]",
+				PluginCommand: "game_screenshot",
+				OptionalArgs:  []string{"--out FILE", "--json"},
+				Defaults:      []string{"text output"},
+				Description:   "Captures the currently running game window through the debugger bridge.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
 				Path:          []string{"script", "open"},
 				Usage:         "godot-bridge script open PATH",
 				PluginCommand: "script_open",
@@ -947,9 +1018,9 @@ func buildSpec() cliSpec {
 			},
 			{
 				Path:          []string{"screenshot"},
-				Usage:         "godot-bridge screenshot",
+				Usage:         "godot-bridge screenshot [--out FILE]",
 				PluginCommand: "screenshot",
-				OptionalArgs:  []string{"--json"},
+				OptionalArgs:  []string{"--out FILE", "--json"},
 				Defaults:      []string{"text output"},
 				Description:   "Captures the current 2D editor viewport.",
 				OutputModes:   []string{"text", "json"},
@@ -1219,6 +1290,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  scene save")
 	fmt.Fprintln(out, "  scene run [PATH]")
 	fmt.Fprintln(out, "  scene stop")
+	fmt.Fprintln(out, "  game screenshot [--out FILE]")
 	fmt.Fprintln(out, "  script open PATH")
 	fmt.Fprintln(out, "  signal connect --source PATH --signal NAME --target PATH --method NAME")
 	fmt.Fprintln(out, "  signal disconnect --source PATH --signal NAME --target PATH --method NAME")
@@ -1230,7 +1302,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  animation new PATH --data JSON")
 	fmt.Fprintln(out, "  animation modify PATH --animation NAME --data JSON")
 	fmt.Fprintln(out, "  debug watch [--events output,error] [--json]")
-	fmt.Fprintln(out, "  screenshot")
+	fmt.Fprintln(out, "  screenshot [--out FILE]")
 	fmt.Fprintln(out, "  resource list [DIR]")
 	fmt.Fprintln(out, "  resource reimport [PATH]")
 }

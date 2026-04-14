@@ -50,7 +50,6 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
 - `godot-plugin/`: implemented and supports scene, node, script, resource, screenshot, and run/stop editor commands.
 - `gdscript-lsp/`: implemented and wired for Claude Code and OpenCode.
 - `cli/`: implemented and buildable as the `godot-bridge` Go CLI.
-- Remaining notable gap: pushed error/debug events from the running game/editor back to the agent.
 
 ## Repository layout
 

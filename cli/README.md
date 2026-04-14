@@ -48,6 +48,7 @@ godot-bridge scene open PATH
 godot-bridge scene save
 godot-bridge scene run [PATH]
 godot-bridge scene stop
+godot-bridge game screenshot [--out FILE]
 
 godot-bridge script open PATH
 godot-bridge signal connect --source PATH --signal NAME --target PATH --method NAME
@@ -63,7 +64,7 @@ godot-bridge animation new PATH --data JSON
 godot-bridge animation modify PATH --animation NAME --data JSON
 
 godot-bridge debug watch [--events output,error] [--json]
-godot-bridge screenshot
+godot-bridge screenshot [--out FILE]
 
 godot-bridge resource list [DIR]
 godot-bridge resource reimport [PATH]
@@ -120,6 +121,7 @@ The bridge supports multiple websocket clients, so `debug watch` can stay connec
 | `godot-bridge scene save` | `scene_save` | none | `--json` | none | Saves the currently open scene. |
 | `godot-bridge scene run [PATH]` | `scene_run` | none | `PATH`, `--json` | `PATH=""` | Runs the main scene, or opens and runs the specified scene. |
 | `godot-bridge scene stop` | `scene_stop` | none | `--json` | none | Stops the running scene. |
+| `godot-bridge game screenshot [--out FILE]` | `game_screenshot` | none | `--out FILE`, `--json` | `text output` | Captures the currently running game window through the debugger bridge. |
 | `godot-bridge script open PATH` | `script_open` | `PATH` | `--json` | none | Opens a script in the Godot script editor. |
 | `godot-bridge signal connect --source PATH --signal NAME --target PATH --method NAME` | `signal_connect` | `--source PATH`, `--signal NAME`, `--target PATH`, `--method NAME` | `--json` | none | Connects a signal from one node to a method on another node. |
 | `godot-bridge signal disconnect --source PATH --signal NAME --target PATH --method NAME` | `signal_disconnect` | `--source PATH`, `--signal NAME`, `--target PATH`, `--method NAME` | `--json` | none | Removes an existing signal connection. |
@@ -131,6 +133,6 @@ The bridge supports multiple websocket clients, so `debug watch` can stay connec
 | `godot-bridge animation new PATH --data JSON` | `animation_new` | `PATH`, `--data JSON` | `--json` | none | Creates a new animation from JSON data on an AnimationPlayer. |
 | `godot-bridge animation modify PATH --animation NAME --data JSON` | `animation_modify` | `PATH`, `--animation NAME`, `--data JSON` | `--json` | none | Updates an existing animation using JSON track data. |
 | `godot-bridge debug watch [--events output,error] [--json]` | `debug_subscribe` | none | `--events output,error`, `--json` | `events=all` | Subscribes to streamed debug events and prints them until interrupted. |
-| `godot-bridge screenshot` | `screenshot` | none | `--json` | `text output` | Captures the current 2D editor viewport. |
+| `godot-bridge screenshot [--out FILE]` | `screenshot` | none | `--out FILE`, `--json` | `text output` | Captures the current 2D editor viewport. |
 | `godot-bridge resource list [DIR]` | `resource_list` | none | `DIR`, `--json` | `DIR=res://` | Lists files and subdirectories from Godot's resource filesystem view. |
 | `godot-bridge resource reimport [PATH]` | `resource_reimport` | none | `PATH`, `--json` | `PATH=full scan` | Triggers Godot to rescan one resource path or the full resource filesystem when omitted. |

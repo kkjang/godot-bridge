@@ -26,3 +26,17 @@ func TestBuildSpecIncludesResourceReimport(t *testing.T) {
 	}
 	t.Fatal("resource reimport command missing from spec")
 }
+
+func TestBuildSpecIncludesGameScreenshot(t *testing.T) {
+	spec := buildSpec()
+	for _, cmd := range spec.Commands {
+		if cmd.Usage != "godot-bridge game screenshot [--out FILE]" {
+			continue
+		}
+		if cmd.PluginCommand != "game_screenshot" {
+			t.Fatalf("game screenshot plugin command = %q, want %q", cmd.PluginCommand, "game_screenshot")
+		}
+		return
+	}
+	t.Fatal("game screenshot command missing from spec")
+}
