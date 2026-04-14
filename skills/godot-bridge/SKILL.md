@@ -18,7 +18,7 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 1. For `.gd` files, prefer the configured GDScript LSP first when it is installed and available.
 2. Use normal LSP requests and follow-up inspection to surface diagnostics efficiently before trying heavier validation.
 3. Use filesystem tools directly for ordinary project file edits.
-4. Use the `godot-bridge` CLI for live editor operations such as scene open/save/run/stop, node inspection and mutation, signal wiring, scene instancing, project settings, animation authoring, script opening, screenshots, resource listing, debug streaming, and editor state inspection.
+4. Use the `godot-bridge` CLI for live editor operations such as scene open/save/run/stop, node inspection and mutation, signal wiring, scene instancing, project settings, animation authoring, script opening, screenshots, resource listing, resource reimport, debug streaming, and editor state inspection.
 5. Treat `godot-bridge spec` as the source of truth for CLI commands, flags, defaults, and plugin mappings.
 6. If LSP and direct inspection are not enough, escalate to heavier checks like running Godot in headless mode as smoke tests when appropriate.
 
@@ -78,10 +78,12 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 - `godot-bridge debug watch --events output,error`
 - `godot-bridge screenshot --json`
 - `godot-bridge resource list res:// --json`
+- `godot-bridge resource reimport res://art/hero.png`
 
 ## Notes
 
 - `resource list` uses Godot's resource filesystem view, so paths should be `res://...`.
+- `resource reimport` is useful after writing assets directly to disk so the editor notices them immediately.
 - `scene run` without a path runs the main scene. With a path, it opens and runs that scene.
 - `screenshot` returns metadata in text mode and image payload data in JSON mode.
 - `debug watch` uses its own websocket connection and can run alongside other CLI commands.

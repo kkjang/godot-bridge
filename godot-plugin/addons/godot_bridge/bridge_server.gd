@@ -227,6 +227,8 @@ func _dispatch(id: String, cmd: String, args: Dictionary) -> void:
 			_cmd_debug_subscribe(id, args)
 		"debug_unsubscribe":
 			_cmd_debug_unsubscribe(id, args)
+		"resource_reimport":
+			_cmd_resource_reimport(id, args)
 		"resource_list":
 			_cmd_resource_list(id, args)
 		"screenshot":
@@ -1181,8 +1183,20 @@ func _cmd_script_open(id: String, args: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------------------
-# Commands — resource_list
+# Commands — resource_reimport / resource_list
 # ---------------------------------------------------------------------------
+
+func _cmd_resource_reimport(id: String, args: Dictionary) -> void:
+	var path : String = str(args.get("path", ""))
+	var fs := EditorInterface.get_resource_filesystem()
+	if path.is_empty():
+		fs.scan()
+		_send_ok(id, {"scanned": "full"})
+		return
+
+	fs.update_file(path)
+	_send_ok(id, {"scanned": path})
+
 
 func _cmd_resource_list(id: String, args: Dictionary) -> void:
 	var dir_path : String = str(args.get("path", "res://"))
@@ -1233,5 +1247,30 @@ func _apply_props(node: Node, props: Dictionary) -> void:
 func _coerce_prop(node: Node, prop_name: String, value) -> Variant:
 	for p in node.get_property_list():
 		if p["name"] == prop_name:
-			return _json_to_variant(value, p["type"])
+			return _coerce_value_for_property(node, p, value)
 	return value
+
+
+func _coerce_value_for_property(node: Node, property_info: Dictionary, value) -> Variant:
+	if value == null:
+		return null
+	var type_hint := int(property_info.get("type", TYPE_NIL))
+	if type_hint == TYPE_OBJECT and value is String and str(value).begins_with("res://"):
+		if _property_accepts_resource(node, property_info):
+			return load(str(value))
+	return _json_to_variant(value, type_hint)
+
+
+func _property_accepts_resource(node: Node, property_info: Dictionary) -> bool:
+	if int(property_info.get("hint", PROPERTY_HINT_NONE)) == PROPERTY_HINT_RESOURCE_TYPE:
+		return true
+	var resource_class := str(property_info.get("class_name", ""))
+	if resource_class.is_empty():
+		resource_class = str(property_info.get("hint_string", ""))
+	if not resource_class.is_empty():
+		return resource_class == "Resource" or ClassDB.is_parent_class(resource_class, "Resource")
+	var prop_name := str(property_info.get("name", ""))
+	if prop_name.is_empty():
+		return false
+	var current_value = node.get(prop_name)
+	return current_value is Resource

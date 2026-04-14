@@ -68,7 +68,7 @@ Example error response:
 - Animation authoring: `animation_list`, `animation_get`, `animation_new`, `animation_modify`
 - Scene actions: `scene_new`, `scene_open`, `scene_save`, `scene_run`, `scene_stop`
 - Debug streaming: `debug_subscribe`, `debug_unsubscribe`
-- Script and resource access: `script_open`, `resource_list`
+- Script and resource access: `script_open`, `resource_list`, `resource_reimport`
 - Capture: `screenshot`
 
 ## Build And Test

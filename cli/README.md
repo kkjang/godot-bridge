@@ -66,6 +66,7 @@ godot-bridge debug watch [--events output,error] [--json]
 godot-bridge screenshot
 
 godot-bridge resource list [DIR]
+godot-bridge resource reimport [PATH]
 ```
 
 See `../godot-plugin/README.md` for the plugin API surface the CLI will talk to.
@@ -132,3 +133,4 @@ The bridge supports multiple websocket clients, so `debug watch` can stay connec
 | `godot-bridge debug watch [--events output,error] [--json]` | `debug_subscribe` | none | `--events output,error`, `--json` | `events=all` | Subscribes to streamed debug events and prints them until interrupted. |
 | `godot-bridge screenshot` | `screenshot` | none | `--json` | `text output` | Captures the current 2D editor viewport. |
 | `godot-bridge resource list [DIR]` | `resource_list` | none | `DIR`, `--json` | `DIR=res://` | Lists files and subdirectories from Godot's resource filesystem view. |
+| `godot-bridge resource reimport [PATH]` | `resource_reimport` | none | `PATH`, `--json` | `PATH=full scan` | Triggers Godot to rescan one resource path or the full resource filesystem when omitted. |
