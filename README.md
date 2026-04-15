@@ -8,6 +8,24 @@ AI-assisted Godot development with a small local toolchain:
 
 This repository is meant to be used from actual game project repositories. The Godot editor can have a different project open than this repository checkout.
 
+## User Journey
+
+```mermaid
+flowchart LR
+    User(["User / Agent"])
+
+    User -->|"editor & scene commands"| CLI["godot-bridge CLI"]
+    User -->|"GDScript code intelligence"| LSPProxy["gdscript-lsp-proxy"]
+
+    CLI -->|"WebSocket :6505"| Plugin["godot-plugin"]
+    LSPProxy -->|"TCP :6005"| GodotLSP["Godot GDScript LSP"]
+
+    Plugin --> EditorLive["Godot Editor (Live)"]
+    GodotLSP --> EditorLive
+
+    EditorLive -.->|"Automated mode"| EditorHeadless["Godot Editor (Headless)"]
+```
+
 For coding-agent implementation guidance inside this repo, see `AGENTS.md`.
 
 This README has two audiences:
