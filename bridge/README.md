@@ -9,7 +9,7 @@ For implementation guidance while building the CLI, see `AGENTS.md`.
 Install the CLI onto `PATH` from any repository:
 
 ```bash
-go install github.com/kkjang/godot-bridge/cli/cmd/godot-bridge@latest
+go install github.com/kkjang/godot-bridge/bridge/cmd/godot-bridge@latest
 godot-bridge version
 ```
 

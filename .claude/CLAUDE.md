@@ -7,5 +7,5 @@
 - In this repository, check for local `AGENTS.md` files in:
   - `../godot-plugin/AGENTS.md`
   - `../gdscript-lsp/AGENTS.md`
-  - `../cli/AGENTS.md`
+  - `../bridge/AGENTS.md`
 - Shared instructions should live in `AGENTS.md` files rather than additional Claude-only markdown files.

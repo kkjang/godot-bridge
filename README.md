@@ -52,7 +52,7 @@ Notes:
 Install the CLI onto `PATH`:
 
 ```bash
-go install github.com/kkjang/godot-bridge/cli/cmd/godot-bridge@latest
+go install github.com/kkjang/godot-bridge/bridge/cmd/godot-bridge@latest
 godot-bridge version
 ```
 
@@ -126,21 +126,21 @@ If the plugin is reachable, `godot-bridge status` prints `connected`.
 |-----------|------------|
 | [`godot-plugin/`](godot-plugin/README.md) | Godot 4.x editor plugin exposing a WebSocket command server on `localhost:6505` |
 | [`gdscript-lsp/`](gdscript-lsp/README.md) | Shared GDScript LSP bridge plus tool-specific integrations |
-| [`cli/`](cli/README.md) | `godot-bridge` CLI (Go) for editor control through the plugin |
+| [`bridge/`](bridge/README.md) | `godot-bridge` CLI (Go) for editor control through the plugin |
 
 ### Test all components
 
 Run these from the repository root:
 
 ```bash
-(cd cli && go test ./...)
+(cd bridge && go test ./...)
 (cd gdscript-lsp && go test ./...)
 (cd godot-plugin && bash scripts/test.sh)
 ```
 
 Notes:
 
-- `cli/` uses Go unit tests.
+- `bridge/` uses Go unit tests.
 - `gdscript-lsp/` uses Go unit tests.
 - `godot-plugin/` uses a headless Godot test project in `godot-plugin/`.
 - On macOS, if `godot` is not on `PATH`, point the plugin test runner at the app bundle binary:
@@ -153,9 +153,9 @@ Notes:
 
 ### Release model
 
-`cli/` and `gdscript-lsp/` are separate Go modules and should be versioned independently.
+`bridge/` and `gdscript-lsp/` are separate Go modules and should be versioned independently.
 
-- CLI tags should use `cli/vX.Y.Z`
+- CLI tags should use `bridge/vX.Y.Z`
 - Proxy tags should use `gdscript-lsp/vX.Y.Z`
 - `go install ...@latest` works for bootstrap
 - Pin `@vX.Y.Z` when you want a specific released version
@@ -175,20 +175,20 @@ Releases are driven by `releases.yaml` on the default branch.
 
 Examples:
 
-- `cli: v0.2.0` produces tag `cli/v0.2.0`
+- `bridge: v0.2.0` produces tag `bridge/v0.2.0`
 - `gdscript-lsp: v0.1.1` produces tag `gdscript-lsp/v0.1.1`
 
 The release workflow now generates component-scoped GitHub release notes from labeled PRs plus the previous same-component tag.
 
 For PRs that touch component paths, CI now auto-applies and validates these release-note labels:
 
-- `component: cli`
+- `component: cli` (applied to `bridge/**` changes)
 - `component: gdscript-lsp`
 - `component: godot-plugin`
 
 using path matches on:
 
-- `cli/**`
+- `bridge/**`
 - `gdscript-lsp/**`
 - `godot-plugin/**`
 

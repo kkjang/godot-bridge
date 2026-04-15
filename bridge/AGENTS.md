@@ -1,4 +1,4 @@
-# cli
+# bridge
 
 Go CLI for driving the Godot editor through the bridge plugin.
 
@@ -50,8 +50,8 @@ Use `README.md` for the user-facing command surface. Use this file for implement
 
 ## Validation
 
-- Run `go test ./...` from `cli/` for CLI unit tests.
-- Run `go build -o /tmp/godot-bridge ./cmd/godot-bridge` from `cli/` when you need to verify the binary still builds.
+- Run `go test ./...` from `bridge/` for CLI unit tests.
+- Run `go build -o /tmp/godot-bridge ./cmd/godot-bridge` from `bridge/` when you need to verify the binary still builds.
 
 ## Spec Source Of Truth
 

@@ -10,7 +10,7 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      cli: ${{ steps.filter.outputs.cli }}
+      bridge: ${{ steps.filter.outputs.bridge }}
       godot-plugin: ${{ steps.filter.outputs.godot-plugin }}
       gdscript-lsp: ${{ steps.filter.outputs.gdscript-lsp }}
     steps:
@@ -19,8 +19,8 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            cli:
-              - 'cli/**'
+            bridge:
+              - 'bridge/**'
             godot-plugin:
               - 'godot-plugin/**'
             gdscript-lsp:
@@ -28,17 +28,17 @@ jobs:
 
   build-cli:
     needs: detect-changes
-    if: needs.detect-changes.outputs.cli == 'true'
+    if: needs.detect-changes.outputs.bridge == 'true'
     runs-on: ubuntu-24.04-arm
     defaults:
       run:
-        working-directory: cli
+        working-directory: bridge
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: cli/go.mod
-          cache-dependency-path: cli/go.sum
+          go-version-file: bridge/go.mod
+          cache-dependency-path: bridge/go.sum
       - name: Run CLI unit tests
         run: go test ./...
       - name: Build CLI

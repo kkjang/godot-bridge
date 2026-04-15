@@ -36,20 +36,20 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
 
 ## Tooling
 
-- Go files (`cli/`, `gdscript-lsp/`): use `gopls`.
+- Go files (`bridge/`, `gdscript-lsp/`): use `gopls`.
 - GDScript files (`.gd`): use the configured GDScript LSP bridge with Godot running.
 
 ## Working In Subdirectories
 
 - Check for a nearer `AGENTS.md` before editing files in a major subdirectory.
-- Subdirectory `AGENTS.md` files provide local instructions for `godot-plugin/`, `gdscript-lsp/`, and `cli/`.
+- Subdirectory `AGENTS.md` files provide local instructions for `godot-plugin/`, `gdscript-lsp/`, and `bridge/`.
 - The nearest `AGENTS.md` to the files you are editing should take precedence over this root file.
 
 ## Status
 
 - `godot-plugin/`: implemented and supports scene, node, script, resource, screenshot, and run/stop editor commands.
 - `gdscript-lsp/`: implemented and wired for Claude Code and OpenCode.
-- `cli/`: implemented and buildable as the `godot-bridge` Go CLI.
+- `bridge/`: implemented and buildable as the `godot-bridge` Go CLI.
 
 ## Repository layout
 
@@ -57,36 +57,36 @@ Coding tool  ->  gdscript-lsp-proxy  ->  TCP :6005  ->  Godot GDScript LSP
 |-----------|-----------|
 | `godot-plugin/` | Godot 4.x editor plugin - WebSocket command server on `localhost:6505` |
 | `gdscript-lsp/` | Shared GDScript LSP bridge plus tool-specific integrations |
-| `cli/` | `godot-bridge` CLI (Go) for plugin-backed editor control |
+| `bridge/` | `godot-bridge` CLI (Go) for plugin-backed editor control |
 
 ## Validation
 
-- `cli/`: run `go test ./...` from `cli/`.
+- `bridge/`: run `go test ./...` from `bridge/`.
 - `gdscript-lsp/`: run `go test ./...` from `gdscript-lsp/`.
 - `godot-plugin/`: run `bash scripts/test.sh` from `godot-plugin/`.
 - On macOS, if Godot is not on `PATH`, use `GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot" bash scripts/test.sh` from `godot-plugin/`.
 - When a change spans multiple components, run the relevant validation command for each touched component before finishing.
-- CI now path-filters component jobs, so changes under `cli/**`, `gdscript-lsp/**`, and `godot-plugin/**` only trigger that component's build/test job.
+- CI now path-filters component jobs, so changes under `bridge/**`, `gdscript-lsp/**`, and `godot-plugin/**` only trigger that component's build/test job.
 
 ## Releases
 
 - Before creating a new branch for release work or implementation work, fetch `origin`, update local `main` from `origin/main`, and branch from that updated `main` unless the user explicitly asks to base work elsewhere.
-- `cli/`, `gdscript-lsp/`, and `godot-plugin/` are versioned independently through `releases.yaml`.
+- `bridge/`, `gdscript-lsp/`, and `godot-plugin/` are versioned independently through `releases.yaml`.
 - Use a small release PR to bump versions intentionally. Do not infer or bump release versions casually.
 - When cutting a `godot-plugin` release PR, also update `godot-plugin/addons/godot_bridge/plugin.cfg` so `version` matches the release number without the leading `v`.
 - Release versions must be semver strings like `v0.1.0`.
 - The requested versions map to module tags:
-  - `cli: vX.Y.Z` -> `cli/vX.Y.Z`
+  - `bridge: vX.Y.Z` -> `bridge/vX.Y.Z`
   - `gdscript-lsp: vX.Y.Z` -> `gdscript-lsp/vX.Y.Z`
   - `godot-plugin: vX.Y.Z` -> `godot-plugin/vX.Y.Z`
 - Releases are created only from the default branch after the `CI` workflow succeeds.
 - The release workflow creates GitHub Releases with component-scoped generated notes based on the previous same-component tag plus PR labels.
 - CI now auto-applies and validates path-based component labels for PRs touching:
-  - `component: cli`
+  - `component: cli` (applied to `bridge/**` changes)
   - `component: gdscript-lsp`
   - `component: godot-plugin`
 - for changes under:
-  - `cli/**`
+  - `bridge/**`
   - `gdscript-lsp/**`
   - `godot-plugin/**`
 - Shared PRs may carry multiple component labels and appear in multiple component releases.

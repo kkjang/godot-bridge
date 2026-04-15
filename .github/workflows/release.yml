@@ -28,26 +28,26 @@ jobs:
         run: |
           set -eu
           git fetch --force --tags origin
-          cli_version=$(grep '^cli:' releases.yaml | cut -d: -f2 | xargs)
+          bridge_version=$(grep '^bridge:' releases.yaml | cut -d: -f2 | xargs)
           gdscript_lsp_version=$(grep '^gdscript-lsp:' releases.yaml | cut -d: -f2 | xargs)
           plugin_version=$(grep '^godot-plugin:' releases.yaml | cut -d: -f2 | xargs)
-          previous_cli_tag=$(git tag --list 'cli/v*' --sort=-version:refname | grep -vx "cli/${cli_version}" | sed -n '1p' || true)
+          previous_bridge_tag=$(git tag --list 'bridge/v*' --sort=-version:refname | grep -vx "bridge/${bridge_version}" | sed -n '1p' || true)
           previous_gdscript_lsp_tag=$(git tag --list 'gdscript-lsp/v*' --sort=-version:refname | grep -vx "gdscript-lsp/${gdscript_lsp_version}" | sed -n '1p' || true)
           previous_plugin_tag=$(git tag --list 'godot-plugin/v*' --sort=-version:refname | grep -vx "godot-plugin/${plugin_version}" | sed -n '1p' || true)
-          echo "cli_version=$cli_version" >> "$GITHUB_OUTPUT"
+          echo "bridge_version=$bridge_version" >> "$GITHUB_OUTPUT"
           echo "gdscript_lsp_version=$gdscript_lsp_version" >> "$GITHUB_OUTPUT"
           echo "plugin_version=$plugin_version" >> "$GITHUB_OUTPUT"
-          echo "previous_cli_tag=$previous_cli_tag" >> "$GITHUB_OUTPUT"
+          echo "previous_bridge_tag=$previous_bridge_tag" >> "$GITHUB_OUTPUT"
           echo "previous_gdscript_lsp_tag=$previous_gdscript_lsp_tag" >> "$GITHUB_OUTPUT"
           echo "previous_plugin_tag=$previous_plugin_tag" >> "$GITHUB_OUTPUT"
 
       - name: Create CLI release when needed
         uses: actions/github-script@v7
         env:
-          VERSION: ${{ steps.manifest.outputs.cli_version }}
-          TAG_NAME: cli/${{ steps.manifest.outputs.cli_version }}
+          VERSION: ${{ steps.manifest.outputs.bridge_version }}
+          TAG_NAME: bridge/${{ steps.manifest.outputs.bridge_version }}
           TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
-          PREVIOUS_TAG: ${{ steps.manifest.outputs.previous_cli_tag }}
+          PREVIOUS_TAG: ${{ steps.manifest.outputs.previous_bridge_tag }}
           CONFIG_PATH: .github/release-cli.yml
         with:
           script: |
@@ -57,7 +57,7 @@ jobs:
             const previousTag = process.env.PREVIOUS_TAG || undefined
             const configPath = process.env.CONFIG_PATH
             if (!/^v\d+\.\d+\.\d+$/.test(version)) {
-              core.setFailed(`cli version must be semver like v1.2.3, got ${version}`)
+              core.setFailed(`bridge version must be semver like v1.2.3, got ${version}`)
               return
             }
             try {

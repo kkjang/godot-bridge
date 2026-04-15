@@ -26,8 +26,8 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            cli:
-              - 'cli/**'
+            bridge:
+              - 'bridge/**'
             godot-plugin:
               - 'godot-plugin/**'
             gdscript-lsp:
@@ -36,13 +36,13 @@ jobs:
       - name: Apply missing path-based component labels
         uses: actions/github-script@v7
         env:
-          CLI_CHANGED: ${{ steps.filter.outputs.cli }}
+          BRIDGE_CHANGED: ${{ steps.filter.outputs.bridge }}
           GODOT_PLUGIN_CHANGED: ${{ steps.filter.outputs.godot-plugin }}
           GDSCRIPT_LSP_CHANGED: ${{ steps.filter.outputs.gdscript-lsp }}
         with:
           script: |
             const expected = []
-            if (process.env.CLI_CHANGED === 'true') expected.push('component: cli')
+            if (process.env.BRIDGE_CHANGED === 'true') expected.push('component: cli')
             if (process.env.GODOT_PLUGIN_CHANGED === 'true') expected.push('component: godot-plugin')
             if (process.env.GDSCRIPT_LSP_CHANGED === 'true') expected.push('component: gdscript-lsp')
 

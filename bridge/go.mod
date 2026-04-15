@@ -1,4 +1,4 @@
-module github.com/kkjang/godot-bridge/cli
+module github.com/kkjang/godot-bridge/bridge
 
 go 1.22
 
