@@ -15,15 +15,13 @@ flowchart LR
     User(["User / Agent"])
 
     User -->|"editor & scene commands"| CLI["godot-bridge CLI"]
-    User -->|"GDScript code intelligence"| LSPProxy["gdscript-lsp-proxy"]
+    User -->|"code editing"| LSPProxy["gdscript-lsp-proxy"]
 
     CLI -->|"WebSocket :6505"| Plugin["godot-plugin"]
     LSPProxy -->|"TCP :6005"| GodotLSP["Godot GDScript LSP"]
 
-    Plugin --> EditorLive["Godot Editor (Live)"]
-    GodotLSP --> EditorLive
-
-    EditorLive -.->|"Automated mode"| EditorHeadless["Godot Editor (Headless)"]
+    Plugin --> Editor["Godot Editor (Live/Headless)"]
+    GodotLSP --> Editor
 ```
 
 For coding-agent implementation guidance inside this repo, see `AGENTS.md`.
