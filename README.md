@@ -15,7 +15,7 @@ flowchart LR
     User(["User / Agent"])
 
     User -->|"editor & scene commands"| CLI["godot-bridge CLI"]
-    User -->|"code editing"| LSPProxy["gdscript-lsp-proxy"]
+    User -->|"code LSP/diagnostics"| LSPProxy["gdscript-lsp-proxy"]
 
     CLI -->|"WebSocket :6505"| Plugin["godot-plugin"]
     LSPProxy -->|"TCP :6005"| GodotLSP["Godot GDScript LSP"]
