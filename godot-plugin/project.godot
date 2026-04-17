@@ -11,11 +11,6 @@ config_version=5
 [application]
 
 config/name="godot-bridge-plugin-tests"
-config/features=PackedStringArray("4.6")
-
-[autoload]
-
-GodotBridgeRuntime="*uid://1xraaju8sn1d"
 
 [editor_plugins]
 
