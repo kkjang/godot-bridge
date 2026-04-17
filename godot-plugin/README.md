@@ -65,7 +65,7 @@ Example error response:
 - Node inspection and edits: `node_tree`, `node_get`, `node_add`, `node_modify`, `node_delete`, `node_move`, `node_instance`
 - Signal wiring: `signal_connect`, `signal_disconnect`, `signal_connections`
 - Project settings: `project_get`, `project_set`
-- Animation authoring: `animation_list`, `animation_get`, `animation_new`, `animation_modify`, `sprite_frames_new`, `sprite_frames_get`, `sprite_frames_modify`
+- Animation authoring: `animation_list`, `animation_get`, `animation_new`, `animation_modify`, `sprite_frames_new`, `sprite_frames_get`, `sprite_frames_modify`, `sprite_frames_from_manifest`
 - Scene actions: `scene_new`, `scene_open`, `scene_save`, `scene_run`, `scene_stop`
 - Debug streaming: `debug_subscribe`, `debug_unsubscribe`
 - Script and resource access: `script_open`, `resource_list`, `resource_reimport`

@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${GODOT_BIN:=$(command -v godot4 || command -v godot)}"
+: "${GODOT_BIN:=$(command -v godot4 || command -v godot || true)}"
+
+if [ -z "$GODOT_BIN" ]; then
+  printf 'Godot binary not found; set GODOT_BIN\n' >&2
+  exit 1
+fi
 
 rc=0
 output=$("$GODOT_BIN" --headless --path . --script res://tests/run_tests.gd 2>&1) || rc=$?
@@ -18,3 +23,5 @@ if printf '%s\n' "$output" | grep -qE '^(ERROR|SCRIPT ERROR):'; then
   printf 'Godot errors detected in test output — treating as failure\n' >&2
   exit 1
 fi
+
+bash scripts/test_editor_integration.sh

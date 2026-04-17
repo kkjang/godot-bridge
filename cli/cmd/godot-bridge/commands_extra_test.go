@@ -1,7 +1,9 @@
 package main
 
 import (
+	"os"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -42,5 +44,67 @@ func TestBuildAnimationPayloadProtectsPathAndRequiresName(t *testing.T) {
 
 	if _, err := buildAnimationPayload("/root/Main/AnimationPlayer", "", `{"length":1.0}`); err == nil {
 		t.Fatal("expected missing animation name error")
+	}
+}
+
+func TestBuildSpriteFramesFromManifestPayloadRejectsHostSheetPaths(t *testing.T) {
+	_, err := buildSpriteFramesFromManifestPayload("/tmp/hero.png", "res://art/hero_frames.tres", []byte(`{"version":1,"frames":[]}`), "", 10)
+	if err == nil {
+		t.Fatal("expected host sheet path error")
+	}
+	if !strings.Contains(err.Error(), "place the file inside the Godot project first") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestBuildSpriteFramesFromManifestPayloadBuildsExpectedShape(t *testing.T) {
+	payload, err := buildSpriteFramesFromManifestPayload(
+		"res://art/hero.png",
+		"res://art/hero_frames.tres",
+		[]byte(`{"version":1,"sheet":"hero.png","sheet_size":{"w":256,"h":64},"frames":[{"name":"idle_0","x":0,"y":0,"w":32,"h":32,"duration_ms":100,"tag":"idle"}]}`),
+		"/root/Main/AnimatedSprite2D",
+		10,
+	)
+	if err != nil {
+		t.Fatalf("buildSpriteFramesFromManifestPayload() error = %v", err)
+	}
+	want := map[string]any{
+		"sheet_path":  "res://art/hero.png",
+		"out_path":    "res://art/hero_frames.tres",
+		"node_path":   "/root/Main/AnimatedSprite2D",
+		"default_fps": 10.0,
+		"manifest": map[string]any{
+			"version": 1.0,
+			"sheet":   "hero.png",
+			"sheet_size": map[string]any{
+				"w": 256.0,
+				"h": 64.0,
+			},
+			"frames": []any{
+				map[string]any{
+					"name":        "idle_0",
+					"x":           0.0,
+					"y":           0.0,
+					"w":           32.0,
+					"h":           32.0,
+					"duration_ms": 100.0,
+					"tag":         "idle",
+				},
+			},
+		},
+	}
+	if !reflect.DeepEqual(payload, want) {
+		t.Fatalf("payload = %#v, want %#v", payload, want)
+	}
+}
+
+func TestRunSpriteFramesFromManifestRequiresSheet(t *testing.T) {
+	cfg := config{stderr: os.Stderr}
+	err := runSpriteFrames(cfg, []string{"from-manifest", "--manifest", "hero.json", "--out", "res://art/hero_frames.tres"})
+	if err == nil {
+		t.Fatal("expected missing sheet usage error")
+	}
+	if !strings.Contains(err.Error(), "usage: godot-bridge sprite-frames from-manifest") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

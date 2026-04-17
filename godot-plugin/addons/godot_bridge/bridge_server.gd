@@ -241,6 +241,8 @@ func _dispatch(id: String, cmd: String, args: Dictionary) -> void:
 			_cmd_sprite_frames_get(id, args)
 		"sprite_frames_modify":
 			_cmd_sprite_frames_modify(id, args)
+		"sprite_frames_from_manifest":
+			_cmd_sprite_frames_from_manifest(id, args)
 		"debug_subscribe":
 			_cmd_debug_subscribe(id, args)
 		"debug_unsubscribe":
@@ -1325,6 +1327,65 @@ func _cmd_sprite_frames_modify(id: String, args: Dictionary) -> void:
 	_send_ok(id, BridgeSpriteFramesCodec.sprite_frames_detail(saved_sprite_frames if saved_sprite_frames != null else updated))
 
 
+func _cmd_sprite_frames_from_manifest(id: String, args: Dictionary) -> void:
+	var connection_id := _active_request_connection_id
+	var out_path := str(args.get("out_path", ""))
+	var sheet_path := str(args.get("sheet_path", ""))
+	var node_path := str(args.get("node_path", ""))
+	var default_fps := float(args.get("default_fps", 10.0))
+	var manifest_value = args.get("manifest", {})
+	if not (manifest_value is Dictionary):
+		_send_error_to_connection(connection_id, id, "'manifest' must be an object")
+		return
+	var manifest := manifest_value as Dictionary
+
+	var validation := _validate_sprite_frames_from_manifest_request(out_path, sheet_path, manifest, default_fps)
+	if validation.has("error"):
+		_send_error_to_connection(connection_id, id, str(validation.get("error", "invalid manifest import request")))
+		return
+
+	var import_result := await _ensure_imported_sheet_uid(sheet_path)
+	if import_result.has("error"):
+		_send_error_to_connection(connection_id, id, str(import_result.get("error", "failed to import sheet")))
+		return
+
+	var spec_result := _build_sprite_frames_from_manifest_spec(sheet_path, manifest, default_fps)
+	if spec_result.has("error"):
+		_send_error_to_connection(connection_id, id, str(spec_result.get("error", "invalid manifest data")))
+		return
+
+	var result := BridgeSpriteFramesCodec.build_sprite_frames({
+		"path": out_path,
+		"animations": spec_result.get("animations", []),
+	})
+	if result.has("error"):
+		_send_error_to_connection(connection_id, id, str(result.get("error", "invalid SpriteFrames data")))
+		return
+	var sprite_frames := result.get("sprite_frames") as SpriteFrames
+	if sprite_frames == null:
+		_send_error_to_connection(connection_id, id, "failed to build SpriteFrames resource")
+		return
+
+	var save_err := ResourceSaver.save(sprite_frames, out_path)
+	if save_err != OK:
+		_send_error_to_connection(connection_id, id, "ResourceSaver.save() failed (error %d)" % save_err)
+		return
+
+	EditorInterface.get_resource_filesystem().update_file(out_path)
+	var saved_sprite_frames := _load_sprite_frames(out_path)
+	if not node_path.is_empty():
+		var assign_result := _assign_sprite_frames_resource(node_path, out_path)
+		if assign_result.has("error"):
+			_send_error_to_connection(connection_id, id, str(assign_result.get("error", "failed to assign SpriteFrames resource")))
+			return
+
+	var response := BridgeSpriteFramesCodec.sprite_frames_detail(saved_sprite_frames if saved_sprite_frames != null else sprite_frames)
+	response["path"] = out_path
+	response["uid"] = _resource_uid_text(out_path)
+	response["sheet_uid"] = str(import_result.get("uid", ""))
+	_send_ok_to_connection(connection_id, id, response)
+
+
 func _load_sprite_frames(path: String) -> SpriteFrames:
 	if path.is_empty():
 		return null
@@ -1332,6 +1393,158 @@ func _load_sprite_frames(path: String) -> SpriteFrames:
 	if not (resource is SpriteFrames):
 		return null
 	return resource as SpriteFrames
+
+
+func _validate_sprite_frames_from_manifest_request(out_path: String, sheet_path: String, manifest: Dictionary, default_fps: float) -> Dictionary:
+	if sheet_path.is_empty():
+		return {"error": "missing 'sheet_path' arg"}
+	if not sheet_path.begins_with("res://"):
+		return {"error": "'sheet_path' must be a res:// path; place the file inside the Godot project first"}
+	if not FileAccess.file_exists(sheet_path):
+		return {"error": "sheet not found: %s" % sheet_path}
+
+	if out_path.is_empty():
+		return {"error": "missing 'out_path' arg"}
+	if not out_path.begins_with("res://"):
+		return {"error": "'out_path' must be a res:// path inside the Godot project"}
+	var parent_dir := out_path.get_base_dir()
+	if parent_dir.is_empty() or not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(parent_dir)):
+		return {"error": "output directory not found: %s" % parent_dir}
+
+	if int(manifest.get("version", -1)) != 1:
+		return {"error": "unsupported manifest version: %s" % str(manifest.get("version", ""))}
+	if default_fps <= 0.0:
+		return {"error": "'default_fps' must be greater than 0"}
+	return {}
+
+
+func _ensure_imported_sheet_uid(sheet_path: String) -> Dictionary:
+	var fs := EditorInterface.get_resource_filesystem()
+	if fs == null:
+		return {"error": "editor resource filesystem is unavailable"}
+
+	var file_known := not str(fs.get_file_type(sheet_path)).is_empty()
+	if file_known:
+		fs.update_file(sheet_path)
+		await _await_editor_filesystem_idle(fs)
+	else:
+		fs.scan()
+		await _await_editor_filesystem_idle(fs)
+
+	if FileAccess.file_exists(sheet_path + ".import"):
+		fs.reimport_files(PackedStringArray([sheet_path]))
+		await _await_editor_filesystem_idle(fs)
+	elif str(fs.get_file_type(sheet_path)).is_empty():
+		fs.scan()
+		await _await_editor_filesystem_idle(fs)
+
+	var uid := ResourceLoader.get_resource_uid(sheet_path)
+	if uid == ResourceUID.INVALID_ID:
+		return {"error": "sheet import did not produce a UID: %s" % sheet_path}
+	return {"uid": ResourceUID.id_to_text(uid)}
+
+
+func _await_editor_filesystem_idle(fs: EditorFileSystem) -> void:
+	for _index in range(30):
+		await get_tree().process_frame
+		if fs.is_scanning():
+			break
+	while fs.is_scanning():
+		await get_tree().process_frame
+
+
+func _build_sprite_frames_from_manifest_spec(sheet_path: String, manifest: Dictionary, default_fps: float) -> Dictionary:
+	var raw_frames = manifest.get("frames", [])
+	if not (raw_frames is Array):
+		return {"error": "manifest 'frames' must be an array"}
+
+	var grouped_frames := {}
+	var group_order: Array[String] = []
+	for raw_frame in raw_frames:
+		if not (raw_frame is Dictionary):
+			return {"error": "manifest frame entries must be objects"}
+		var frame_spec := raw_frame as Dictionary
+		var animation_name := str(frame_spec.get("tag", "")).strip_edges()
+		if animation_name.is_empty():
+			animation_name = "default"
+		if not grouped_frames.has(animation_name):
+			grouped_frames[animation_name] = []
+			group_order.append(animation_name)
+		(grouped_frames[animation_name] as Array).append(frame_spec)
+
+	var animations := []
+	for animation_name in group_order:
+		var frames_for_animation := grouped_frames.get(animation_name, []) as Array
+		var frame_durations_ms := []
+		var total_duration_ms := 0.0
+		for raw_frame_spec in frames_for_animation:
+			var duration_result := _manifest_frame_duration_ms(raw_frame_spec as Dictionary, default_fps)
+			if duration_result.has("error"):
+				return duration_result
+			var duration_ms := float(duration_result.get("duration_ms", 0.0))
+			frame_durations_ms.append(duration_ms)
+			total_duration_ms += duration_ms
+
+		var average_duration_ms := total_duration_ms / float(max(1, frames_for_animation.size()))
+		var frames := []
+		for index in range(frames_for_animation.size()):
+			var frame_spec := frames_for_animation[index] as Dictionary
+			var region_result := _manifest_frame_region(frame_spec)
+			if region_result.has("error"):
+				return region_result
+			var duration_ms := float(frame_durations_ms[index])
+			frames.append({
+				"texture": sheet_path,
+				"region": region_result.get("region", {}),
+				"duration": duration_ms / average_duration_ms,
+			})
+
+		animations.append({
+			"name": animation_name,
+			"speed": 1000.0 / average_duration_ms,
+			"loop": true,
+			"frames": frames,
+		})
+
+	return {"animations": animations}
+
+
+func _manifest_frame_duration_ms(frame_spec: Dictionary, default_fps: float) -> Dictionary:
+	if not frame_spec.has("duration_ms"):
+		return {"duration_ms": 1000.0 / default_fps}
+	var duration_ms := float(frame_spec.get("duration_ms", 0.0))
+	if duration_ms <= 0.0:
+		return {"error": "manifest frame duration_ms must be greater than 0"}
+	return {"duration_ms": duration_ms}
+
+
+func _manifest_frame_region(frame_spec: Dictionary) -> Dictionary:
+	for key in ["x", "y", "w", "h"]:
+		if not frame_spec.has(key):
+			return {"error": "manifest frame is missing '%s'" % key}
+	return {
+		"region": {
+			"x": float(frame_spec.get("x", 0.0)),
+			"y": float(frame_spec.get("y", 0.0)),
+			"w": float(frame_spec.get("w", 0.0)),
+			"h": float(frame_spec.get("h", 0.0)),
+		}
+	}
+
+
+func _assign_sprite_frames_resource(node_path: String, resource_path: String) -> Dictionary:
+	var node := _resolve_node(node_path)
+	if node == null:
+		return {"error": "Node not found: %s" % node_path}
+	_apply_props(node, {"sprite_frames": resource_path})
+	return {}
+
+
+func _resource_uid_text(path: String) -> String:
+	var uid := ResourceLoader.get_resource_uid(path)
+	if uid == ResourceUID.INVALID_ID:
+		return ""
+	return ResourceUID.id_to_text(uid)
 
 
 # ---------------------------------------------------------------------------

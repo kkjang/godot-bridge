@@ -134,6 +134,16 @@ godot-bridge editor state
 
 If the plugin is reachable, `godot-bridge status` prints `connected`.
 
+If your content pipeline emits a sprite sheet plus manifest sidecar, you can turn that into a Godot `SpriteFrames` resource without hand-editing `.tres` files:
+
+```bash
+godot-bridge sprite-frames from-manifest \
+  --sheet res://art/hero.png \
+  --manifest res://art/hero.json \
+  --out res://art/hero_frames.tres \
+  --node /root/Main/Hero
+```
+
 ## Develop The Bridge
 
 ### Components

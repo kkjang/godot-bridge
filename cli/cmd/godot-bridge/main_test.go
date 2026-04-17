@@ -54,3 +54,17 @@ func TestBuildSpecIncludesSpriteFramesModify(t *testing.T) {
 	}
 	t.Fatal("sprite-frames modify command missing from spec")
 }
+
+func TestBuildSpecIncludesSpriteFramesFromManifest(t *testing.T) {
+	spec := buildSpec()
+	for _, cmd := range spec.Commands {
+		if cmd.Usage != "godot-bridge sprite-frames from-manifest --sheet res://sheet.png --manifest PATH --out res://frames.tres [--node PATH] [--default-fps N]" {
+			continue
+		}
+		if cmd.PluginCommand != "sprite_frames_from_manifest" {
+			t.Fatalf("sprite-frames from-manifest plugin command = %q, want %q", cmd.PluginCommand, "sprite_frames_from_manifest")
+		}
+		return
+	}
+	t.Fatal("sprite-frames from-manifest command missing from spec")
+}

@@ -1,9 +1,26 @@
 ; Engine configuration file.
-; Used as a lightweight headless test project for the bridge plugin.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
 [application]
 
 config/name="godot-bridge-plugin-tests"
-run/main_scene=""
+config/features=PackedStringArray("4.6")
+
+[autoload]
+
+GodotBridgeRuntime="*uid://1xraaju8sn1d"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_bridge/plugin.cfg")
+
+[godot_bridge]
+
+port=6515
