@@ -9,14 +9,21 @@ if [ -z "$GODOT_BIN" ]; then
 fi
 
 editor_log=$(mktemp)
+project_backup=$(mktemp)
 cleanup() {
   if [ -n "${editor_pid:-}" ] && kill -0 "$editor_pid" 2>/dev/null; then
     kill "$editor_pid" 2>/dev/null || true
     wait "$editor_pid" 2>/dev/null || true
   fi
+  if [ -f "$project_backup" ]; then
+    cp "$project_backup" project.godot
+  fi
   rm -f "$editor_log"
+  rm -f "$project_backup"
 }
 trap cleanup EXIT
+
+cp project.godot "$project_backup"
 
 "$GODOT_BIN" --headless --editor --path . --quit-after 2400 >"$editor_log" 2>&1 &
 editor_pid=$!
