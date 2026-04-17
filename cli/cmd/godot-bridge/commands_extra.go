@@ -5,6 +5,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -62,6 +64,9 @@ type spriteFramesAnimation struct {
 }
 
 type spriteFramesDetail struct {
+	Path       string                  `json:"path,omitempty"`
+	UID        string                  `json:"uid,omitempty"`
+	SheetUID   string                  `json:"sheet_uid,omitempty"`
 	Animations []spriteFramesAnimation `json:"animations"`
 }
 
@@ -329,7 +334,7 @@ func runAnimation(cfg config, args []string) error {
 
 func runSpriteFrames(cfg config, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: godot-bridge sprite-frames <new|get|modify> ...")
+		return errors.New("usage: godot-bridge sprite-frames <new|get|modify|from-manifest> ...")
 	}
 
 	switch args[0] {
@@ -405,6 +410,41 @@ func runSpriteFrames(cfg config, args []string) error {
 		}
 		_, err = fmt.Fprintf(cfg.stdout, "updated sprite frames resource with %d animation(s)\n", len(detail.Animations))
 		return err
+	case "from-manifest":
+		fs := flag.NewFlagSet("sprite-frames from-manifest", flag.ContinueOnError)
+		fs.SetOutput(cfg.stderr)
+		sheetPath := fs.String("sheet", "", "")
+		manifestPath := fs.String("manifest", "", "")
+		outPath := fs.String("out", "", "")
+		nodePath := fs.String("node", "", "")
+		defaultFPS := fs.Float64("default-fps", 10, "")
+		if err := fs.Parse(reorderFlags(args[1:], "sheet", "manifest", "out", "node", "default-fps")); err != nil {
+			return err
+		}
+		if fs.NArg() != 0 || *sheetPath == "" || *manifestPath == "" || *outPath == "" {
+			return errors.New("usage: godot-bridge sprite-frames from-manifest --sheet res://sheet.png --manifest PATH --out res://frames.tres [--node PATH] [--default-fps N]")
+		}
+		manifestData, err := os.ReadFile(resolveManifestPath(*manifestPath))
+		if err != nil {
+			return fmt.Errorf("read manifest %s: %w", *manifestPath, err)
+		}
+		payload, err := buildSpriteFramesFromManifestPayload(*sheetPath, *outPath, manifestData, *nodePath, *defaultFPS)
+		if err != nil {
+			return err
+		}
+		_, data, err := sendCommand(cfg, "sprite_frames_from_manifest", payload)
+		if err != nil {
+			return err
+		}
+		if cfg.asJSON {
+			return writeRawJSON(cfg.stdout, data)
+		}
+		var detail spriteFramesDetail
+		if err := json.Unmarshal(data, &detail); err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(cfg.stdout, "created %s from manifest with %d animation(s) using sheet %s\n", detail.Path, len(detail.Animations), detail.SheetUID)
+		return err
 	default:
 		return fmt.Errorf("unknown sprite-frames command %q", args[0])
 	}
@@ -434,6 +474,44 @@ func buildSpriteFramesPayload(path string, dataText string) (map[string]any, err
 		return nil, errors.New("sprite frame data must include \"animations\"")
 	}
 	return mergeArgs(map[string]any{"path": path}, data, "path"), nil
+}
+
+func buildSpriteFramesFromManifestPayload(sheetPath string, outPath string, manifestData []byte, nodePath string, defaultFPS float64) (map[string]any, error) {
+	if !strings.HasPrefix(sheetPath, "res://") {
+		return nil, errors.New("--sheet must be a res:// path; place the file inside the Godot project first")
+	}
+	if !strings.HasPrefix(outPath, "res://") {
+		return nil, errors.New("--out must be a res:// path inside the Godot project")
+	}
+	if defaultFPS <= 0 {
+		return nil, errors.New("--default-fps must be greater than 0")
+	}
+
+	var manifest map[string]any
+	if err := json.Unmarshal(manifestData, &manifest); err != nil {
+		return nil, fmt.Errorf("invalid manifest JSON: %w", err)
+	}
+	if manifest == nil {
+		return nil, errors.New("manifest JSON must be an object")
+	}
+
+	payload := map[string]any{
+		"sheet_path":  sheetPath,
+		"out_path":    outPath,
+		"manifest":    manifest,
+		"default_fps": defaultFPS,
+	}
+	if nodePath != "" {
+		payload["node_path"] = nodePath
+	}
+	return payload, nil
+}
+
+func resolveManifestPath(path string) string {
+	if !strings.HasPrefix(path, "res://") {
+		return path
+	}
+	return filepath.FromSlash(strings.TrimPrefix(path, "res://"))
 }
 
 func printAnimationDetail(cfg config, detail animationDetail) error {

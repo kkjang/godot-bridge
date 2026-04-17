@@ -1038,6 +1038,16 @@ func buildSpec() cliSpec {
 				OutputModes:   []string{"text", "json"},
 			},
 			{
+				Path:          []string{"sprite-frames", "from-manifest"},
+				Usage:         "godot-bridge sprite-frames from-manifest --sheet res://sheet.png --manifest PATH --out res://frames.tres [--node PATH] [--default-fps N]",
+				PluginCommand: "sprite_frames_from_manifest",
+				RequiredArgs:  []string{"--sheet res://sheet.png", "--manifest PATH", "--out res://frames.tres"},
+				OptionalArgs:  []string{"--node PATH", "--default-fps FLOAT", "--json"},
+				Defaults:      []string{"default-fps=10"},
+				Description:   "Builds a SpriteFrames resource from a sprite-gen sheet manifest and optionally assigns it to a node.",
+				OutputModes:   []string{"text", "json"},
+			},
+			{
 				Path:          []string{"debug", "watch"},
 				Usage:         "godot-bridge debug watch [--events output,error] [--json]",
 				PluginCommand: "debug_subscribe",
@@ -1334,6 +1344,7 @@ func printUsage(out *os.File) {
 	fmt.Fprintln(out, "  sprite-frames new PATH --data JSON")
 	fmt.Fprintln(out, "  sprite-frames get PATH")
 	fmt.Fprintln(out, "  sprite-frames modify PATH --data JSON [--mode merge|replace]")
+	fmt.Fprintln(out, "  sprite-frames from-manifest --sheet res://sheet.png --manifest PATH --out res://frames.tres [--node PATH] [--default-fps N]")
 	fmt.Fprintln(out, "  debug watch [--events output,error] [--json]")
 	fmt.Fprintln(out, "  screenshot [--out FILE]")
 	fmt.Fprintln(out, "  resource list [DIR]")

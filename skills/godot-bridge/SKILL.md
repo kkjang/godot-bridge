@@ -75,6 +75,7 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 - `godot-bridge project get --prefix input/ --json`
 - `godot-bridge animation list /root/Main/AnimationPlayer --json`
 - `godot-bridge sprite-frames new res://art/player.tres --data '{"animations":[{"name":"idle","speed":6,"loop":true,"frames":[{"texture":"res://art/player_sheet.png","region":{"x":0,"y":0,"w":16,"h":16}}]}]}'`
+- `godot-bridge sprite-frames from-manifest --sheet res://art/player_sheet.png --manifest res://art/player_sheet.json --out res://art/player_frames.tres --node /root/Main/Player`
 - `godot-bridge node modify /root/Main/Player --props '{"sprite_frames":"res://art/player.tres","animation":"idle","autoplay":"idle"}'`
 - `godot-bridge scene save`
 - `godot-bridge debug watch --events output,error`

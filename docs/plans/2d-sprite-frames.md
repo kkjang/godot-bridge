@@ -105,3 +105,22 @@ godot-bridge sprite-frames new res://art/player.tres --data '{
    `docs/plans/2d-game-screenshot.md`) — the animated frame is rendering.
 7. `cd cli && go test ./...` and `cd godot-plugin && bash scripts/test.sh`.
 8. `godot-bridge spec --markdown` lists the new commands.
+
+## Ingesting sprite-gen manifests via `sprite_frames_from_manifest`
+
+The follow-up importer command keeps sprite-gen out of direct `.tres` authoring while still making spritesheet workflows first-class.
+
+- `sprite_frames_from_manifest` accepts a `res://` sheet PNG, a parsed sprite-gen manifest object, an output `res://` SpriteFrames path, and optional node assignment.
+- The plugin waits for the sheet to be imported through the editor filesystem, resolves the real Godot UID for that sheet, and then translates the manifest into the existing `BridgeSpriteFramesCodec.build_sprite_frames()` input shape.
+- Region slicing still flows through `_build_frame()` in `bridge_sprite_frames_codec.gd`, so manifest ingestion stays a thin orchestration layer.
+- Saving still goes through `ResourceSaver.save(...)`, which lets Godot write the `.uid` sidecar and persist `ext_resource` references against the imported sheet UID instead of a hand-rolled placeholder.
+
+Example:
+
+```bash
+godot-bridge sprite-frames from-manifest \
+  --sheet res://art/hero.png \
+  --manifest res://art/hero.json \
+  --out res://art/hero_frames.tres \
+  --node /root/Main/Hero
+```

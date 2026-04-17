@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "sheet": "hero_sheet.png",
+  "sheet_size": { "w": 128, "h": 32 },
+  "frames": [
+    { "name": "idle_0", "x": 0, "y": 0, "w": 32, "h": 32, "duration_ms": 100, "tag": "idle" },
+    { "name": "idle_1", "x": 32, "y": 0, "w": 32, "h": 32, "duration_ms": 100, "tag": "idle" },
+    { "name": "run_0", "x": 64, "y": 0, "w": 32, "h": 32, "duration_ms": 100, "tag": "run" },
+    { "name": "run_1", "x": 96, "y": 0, "w": 32, "h": 32, "duration_ms": 100, "tag": "run" }
+  ]
+}

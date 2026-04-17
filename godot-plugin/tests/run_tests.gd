@@ -7,6 +7,7 @@ const TEST_FILES := [
 	"res://tests/test_project_settings.gd",
 	"res://tests/test_animation_codec.gd",
 	"res://tests/test_sprite_frames_codec.gd",
+	"res://tests/test_sprite_frames_from_manifest.gd",
 ]
 
 
