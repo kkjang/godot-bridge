@@ -35,6 +35,33 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 - The Godot GDScript LSP defaults to `localhost:6005` unless configured otherwise.
 - The repository containing the bridge code may be different from the game project currently open in Godot.
 
+## OpenCode setup
+
+- If the project uses OpenCode, update the project-root `opencode.json` so `lsp` is an object and includes a custom `gdscript` server entry for `gdscript-lsp-proxy`.
+- Merge this into any existing `lsp` object instead of replacing unrelated servers.
+- If `lsp` is currently `true`, convert it to an object so built-in servers stay enabled while adding the custom GDScript server.
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "lsp": {
+    "gdscript": {
+      "command": [
+        "gdscript-lsp-proxy"
+      ],
+      "extensions": [
+        ".gd"
+      ],
+      "env": {
+        "GODOT_LSP_PORT": "6005"
+      }
+    }
+  }
+}
+```
+
+- If the Godot language server uses a different port, change `GODOT_LSP_PORT` to match.
+
 ## CLI usage
 
 - Prefer `godot-bridge ...` when the binary is installed and available on `PATH`.
