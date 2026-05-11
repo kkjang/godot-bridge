@@ -100,16 +100,24 @@ The repo-root `opencode.json` is also usable directly when working in this repos
 
 If your OpenCode setup uses skills, copy `skills/godot-bridge/SKILL.md` into one of OpenCode's discovered skill locations for the target game project.
 
-### 4. Copy the Godot plugin into the game project
+### 4. Install the Godot plugin from a GitHub release
 
-Copy `godot-plugin/addons/godot_bridge/` into the target game's `addons/` directory.
+Agents should install the plugin from a published GitHub release artifact instead of copying files from a source checkout.
+
+Download the `godot-bridge-plugin-vX.Y.Z.zip` asset from the matching `godot-plugin/vX.Y.Z` release at `https://github.com/kkjang/godot-bridge/releases`, then extract its `addons/godot_bridge/` contents into the target game's `addons/` directory.
 
 Example:
 
 ```bash
+PLUGIN_VERSION=v0.1.0
 mkdir -p /path/to/game-project/addons
-cp -R godot-plugin/addons/godot_bridge /path/to/game-project/addons/
+curl -fL \
+  -o /tmp/godot-bridge-plugin.zip \
+  "https://github.com/kkjang/godot-bridge/releases/download/godot-plugin/${PLUGIN_VERSION}/godot-bridge-plugin-${PLUGIN_VERSION}.zip"
+unzip -o /tmp/godot-bridge-plugin.zip -d /path/to/game-project
 ```
+
+Use `@latest` or any pinned CLI/proxy version you need for the Go tools, but install the plugin from the specific release artifact you want the game project to run.
 
 Then enable **Godot Bridge** in **Project -> Project Settings -> Plugins**.
 

@@ -11,21 +11,26 @@ For implementation guidance and protocol constraints while editing this plugin, 
 
 ## Installation
 
-1. Copy `addons/godot_bridge/` into your project's `addons/` directory.
-2. Enable **Godot Bridge** in **Project -> Project Settings -> Plugins**.
-3. Wait until the bottom panel shows one of these states:
+1. Download the `godot-bridge-plugin-vX.Y.Z.zip` asset from the matching `godot-plugin/vX.Y.Z` GitHub release at `https://github.com/kkjang/godot-bridge/releases`.
+2. Extract the archive into your project root so it creates `addons/godot_bridge/`.
+3. Enable **Godot Bridge** in **Project -> Project Settings -> Plugins**.
+4. Wait until the bottom panel shows one of these states:
    - `Bridge: Listening :6505`
    - `Bridge: Connected (N)`
    - `Bridge: Error (port 6505)`
-4. If an agent is driving setup, pause here and wait for the user to confirm the plugin has been enabled.
+5. If an agent is driving setup, pause here and wait for the user to confirm the plugin has been enabled.
 
 Agents may optionally enable the plugin by editing `project.godot`, but that is less reliable than the UI flow and usually requires reopening the Godot editor before the plugin loads.
 
-Example copy command from this repository into a game project:
+Example install from a GitHub release:
 
 ```bash
+PLUGIN_VERSION=v0.1.0
 mkdir -p /path/to/game-project/addons
-cp -R godot-plugin/addons/godot_bridge /path/to/game-project/addons/
+curl -fL \
+  -o /tmp/godot-bridge-plugin.zip \
+  "https://github.com/kkjang/godot-bridge/releases/download/godot-plugin/${PLUGIN_VERSION}/godot-bridge-plugin-${PLUGIN_VERSION}.zip"
+unzip -o /tmp/godot-bridge-plugin.zip -d /path/to/game-project
 ```
 
 ## Changing the port
