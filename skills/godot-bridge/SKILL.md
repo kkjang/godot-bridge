@@ -6,7 +6,7 @@ description: Use the Godot Bridge tool suite for Godot editor control and GDScri
 ## What I do
 
 - Guide work across three layers: OpenCode's built-in LSP for `.gd` code intelligence, the `godot-bridge` CLI for live editor control, and heavier Godot validation only when needed.
-- Treat `gdscript-lsp-proxy` as setup behind OpenCode's LSP integration, not as a process to launch manually during normal work.
+- Treat `gdscript-lsp-proxy` as transport that OpenCode may launch from the configured `opencode.json`, not as a process to launch manually from `bash` during normal work.
 - Prefer the lightest reliable feedback loop for the task.
 - Keep harness-specific wiring separate from this workflow guidance.
 
@@ -17,7 +17,7 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 ## Workflow
 
 1. Use OpenCode's built-in LSP first for `.gd` diagnostics, symbol lookup, definitions, and references.
-2. Do not manually launch `gdscript-lsp-proxy` or create ad-hoc JSON-RPC/TCP LSP clients unless the user is explicitly debugging LSP setup.
+2. Let OpenCode launch the configured `gdscript-lsp-proxy` for `.gd` files, and use the regular built-in LSP interface instead of manually launching the proxy from `bash` or creating ad-hoc JSON-RPC/TCP LSP clients, unless the user is explicitly debugging LSP setup.
 3. If usable LSP operations are unavailable in the current session, state that explicitly and fall back to file inspection plus Godot validation as needed.
 4. Use filesystem tools directly for ordinary project file edits.
 5. Use the `godot-bridge` CLI for live editor operations such as scene open/save/run/stop, node inspection and mutation, signal wiring, scene instancing, project settings, animation authoring including `SpriteFrames`, script opening, editor and running-game screenshots, resource listing, resource reimport, debug streaming, and editor state inspection.
@@ -41,7 +41,7 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 ## OpenCode LSP
 
 - In downstream repos, `opencode.json` may already configure the GDScript LSP via `gdscript-lsp-proxy`.
-- In normal work, use OpenCode's built-in LSP operations for `.gd` files rather than launching `gdscript-lsp-proxy` from `bash`.
+- In normal work, if `opencode.json` configures `gdscript-lsp-proxy`, let OpenCode launch it and then use OpenCode's built-in LSP operations for `.gd` files rather than launching `gdscript-lsp-proxy` from `bash` yourself.
 - Only edit `opencode.json`, manually test proxy startup, or debug low-level LSP transport when the user explicitly asks for LSP setup or troubleshooting.
 - If the project needs setup, update the project-root `opencode.json` so `lsp` is an object and includes a custom `gdscript` server entry for `gdscript-lsp-proxy`.
 - Merge this into any existing `lsp` object instead of replacing unrelated servers.
