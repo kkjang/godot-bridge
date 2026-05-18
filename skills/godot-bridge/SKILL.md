@@ -5,7 +5,8 @@ description: Use the Godot Bridge tool suite for Godot editor control and GDScri
 
 ## What I do
 
-- Guide work across the three Godot Bridge components: `gdscript-lsp-proxy`, the `godot-bridge` CLI, and the Godot editor plugin.
+- Guide work across three layers: OpenCode's built-in LSP for `.gd` code intelligence, the `godot-bridge` CLI for live editor control, and heavier Godot validation only when needed.
+- Treat `gdscript-lsp-proxy` as setup behind OpenCode's LSP integration, not as a process to launch manually during normal work.
 - Prefer the lightest reliable feedback loop for the task.
 - Keep harness-specific wiring separate from this workflow guidance.
 
@@ -15,16 +16,18 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 
 ## Workflow
 
-1. For `.gd` files, prefer the configured GDScript LSP first when it is installed and available.
-2. Use normal LSP requests and follow-up inspection to surface diagnostics efficiently before trying heavier validation.
-3. Use filesystem tools directly for ordinary project file edits.
-4. Use the `godot-bridge` CLI for live editor operations such as scene open/save/run/stop, node inspection and mutation, signal wiring, scene instancing, project settings, animation authoring including `SpriteFrames`, script opening, editor and running-game screenshots, resource listing, resource reimport, debug streaming, and editor state inspection.
-5. Treat `godot-bridge spec` as the source of truth for CLI commands, flags, defaults, and plugin mappings.
-6. If LSP and direct inspection are not enough, escalate to heavier checks like running Godot in headless mode as smoke tests when appropriate.
+1. Use OpenCode's built-in LSP first for `.gd` diagnostics, symbol lookup, definitions, and references.
+2. Do not manually launch `gdscript-lsp-proxy` or create ad-hoc JSON-RPC/TCP LSP clients unless the user is explicitly debugging LSP setup.
+3. If usable LSP operations are unavailable in the current session, state that explicitly and fall back to file inspection plus Godot validation as needed.
+4. Use filesystem tools directly for ordinary project file edits.
+5. Use the `godot-bridge` CLI for live editor operations such as scene open/save/run/stop, node inspection and mutation, signal wiring, scene instancing, project settings, animation authoring including `SpriteFrames`, script opening, editor and running-game screenshots, resource listing, resource reimport, debug streaming, and editor state inspection.
+6. Treat `godot-bridge spec` as the source of truth for CLI commands, flags, defaults, and plugin mappings.
+7. If LSP, direct inspection, and live editor inspection are not enough, escalate to heavier checks like running Godot in headless mode as smoke tests when appropriate.
 
 ## Components
 
-- `gdscript-lsp-proxy`: bridges stdio-based LSP clients to Godot's TCP-based GDScript language server.
+- OpenCode built-in LSP integration: primary surface for `.gd` code intelligence during normal agent work.
+- `gdscript-lsp-proxy`: transport configured behind OpenCode's LSP integration to bridge stdio-based LSP clients to Godot's TCP-based GDScript language server.
 - `godot-bridge`: CLI for plugin-backed editor control.
 - Godot Bridge plugin: runs in the editor and exposes the command surface used by the CLI.
 
@@ -35,9 +38,12 @@ Use this skill when working in a Godot project that may use the Godot Bridge too
 - The Godot GDScript LSP defaults to `localhost:6005` unless configured otherwise.
 - The repository containing the bridge code may be different from the game project currently open in Godot.
 
-## OpenCode setup
+## OpenCode LSP
 
-- If the project uses OpenCode, update the project-root `opencode.json` so `lsp` is an object and includes a custom `gdscript` server entry for `gdscript-lsp-proxy`.
+- In downstream repos, `opencode.json` may already configure the GDScript LSP via `gdscript-lsp-proxy`.
+- In normal work, use OpenCode's built-in LSP operations for `.gd` files rather than launching `gdscript-lsp-proxy` from `bash`.
+- Only edit `opencode.json`, manually test proxy startup, or debug low-level LSP transport when the user explicitly asks for LSP setup or troubleshooting.
+- If the project needs setup, update the project-root `opencode.json` so `lsp` is an object and includes a custom `gdscript` server entry for `gdscript-lsp-proxy`.
 - Merge this into any existing `lsp` object instead of replacing unrelated servers.
 - If `lsp` is currently `true`, convert it to an object so built-in servers stay enabled while adding the custom GDScript server.
 
